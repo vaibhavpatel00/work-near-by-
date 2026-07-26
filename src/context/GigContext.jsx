@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { MOCK_GIGS, MOCK_USERS } from '../data/mockData';
+import { MOCK_USERS } from '../data/mockData';
 import { calculateDistance, generateId } from '../utils/helpers';
 import { useLocation } from './LocationContext';
 import { useAuth } from './AuthContext';
@@ -18,10 +18,14 @@ export const GigProvider = ({ children }) => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          // Filter out legacy mock demo gigs (IDs like gig-1, gig-2, etc.)
+          const realOnly = parsed.filter(g => typeof g.id === 'string' && !g.id.startsWith('gig-'));
+          return realOnly;
+        }
       } catch { /* ignore */ }
     }
-    return MOCK_GIGS;
+    return [];
   });
 
   const [toasts, setToasts] = useState([]);
@@ -37,11 +41,11 @@ export const GigProvider = ({ children }) => {
           .order('posted_at', { ascending: false });
 
         if (error) {
-          console.info('Supabase gigs table query info:', error.message);
+          console.info('Supabase gigs query info:', error.message);
           return;
         }
 
-        if (data && data.length > 0 && isMounted) {
+        if (data && isMounted) {
           // Map DB column names to app camelCase properties
           const formatted = data.map(g => ({
             id: g.id,
