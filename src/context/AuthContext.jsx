@@ -64,6 +64,31 @@ export const AuthProvider = ({ children }) => {
     return mapUser(data.user);
   };
 
+  const sendOtp = async (email, metadata = {}) => {
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        data: metadata,
+        shouldCreateUser: true,
+      },
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const verifyOtp = async (email, token) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    });
+    if (error) throw error;
+    const mapped = mapUser(data.user);
+    setUser(mapped);
+    setSession(data.session);
+    return mapped;
+  };
+
   const signup = async (name, email, phone, password) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -103,6 +128,8 @@ export const AuthProvider = ({ children }) => {
       loading,
       isAuthenticated: !!user,
       login,
+      sendOtp,
+      verifyOtp,
       signup,
       updateProfile,
       logout,
