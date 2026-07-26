@@ -4,7 +4,7 @@ const LocationContext = createContext(null);
 
 const DEFAULT_LAT = 17.385;
 const DEFAULT_LNG = 78.4867;
-const STORAGE_KEY = 'wixwix_location';
+const STORAGE_KEY = 'wikwik_location';
 
 const reverseGeocode = async (lat, lng) => {
   try {

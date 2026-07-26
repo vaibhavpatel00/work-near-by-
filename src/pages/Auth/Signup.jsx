@@ -119,28 +119,26 @@ const Signup = () => {
         <div className="auth-header">
           <div className="auth-logo">
             <span className="auth-logo-icon">⚡</span>
-            <h1 className="auth-logo-text">wixwix</h1>
+            <h1 className="auth-logo-text">wikwik</h1>
           </div>
-          <p className="auth-subtitle">Real-Time Local Work Marketplace</p>
+          <p className="auth-subtitle">Hyperlocal Work Marketplace</p>
         </div>
 
         {/* Mode Toggle Tabs */}
-        <div className="auth-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '0.75rem' }}>
+        <div className="auth-tabs">
           <button
             type="button"
-            className={`btn btn-block ${authMode === 'otp' ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ borderRadius: '0.5rem', padding: '0.5rem', fontSize: '0.875rem' }}
+            className={`auth-tab-btn ${authMode === 'otp' ? 'active' : ''}`}
             onClick={() => { setAuthMode('otp'); setStep('request'); setError(''); setMessage(''); }}
           >
-            <KeyRound size={16} /> Instant Email OTP
+            <KeyRound size={15} /> Email OTP
           </button>
           <button
             type="button"
-            className={`btn btn-block ${authMode === 'password' ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ borderRadius: '0.5rem', padding: '0.5rem', fontSize: '0.875rem' }}
+            className={`auth-tab-btn ${authMode === 'password' ? 'active' : ''}`}
             onClick={() => { setAuthMode('password'); setError(''); setMessage(''); }}
           >
-            <Lock size={16} /> Password
+            <Lock size={15} /> Password
           </button>
         </div>
 

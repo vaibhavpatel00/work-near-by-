@@ -19,13 +19,22 @@ const Profile = () => {
   if (!isAuthenticated) {
     return (
       <div className="page-content">
-        <div className="profile-guest animate-fade-in text-center p-6">
-          <div className="guest-icon-wrapper">
-            <User size={48} className="text-tertiary" />
+        <div className="profile-guest animate-fade-in" style={{
+          maxWidth: '400px', margin: '3rem auto', textAlign: 'center', padding: '2.5rem 2rem',
+          background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-2xl)',
+          boxShadow: 'var(--shadow-lg)'
+        }}>
+          <div style={{
+            width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 1.5rem',
+            background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <User size={36} color="var(--text-tertiary)" />
           </div>
-          <h2>Welcome to wixwix</h2>
-          <p className="text-secondary mt-2">Sign in to manage your profile, post gigs, and track your work history.</p>
-          <div className="guest-actions mt-6">
+          <h2 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Welcome to wikwik</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+            Sign in to manage your profile, post work requirements, and track your history.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
             <a href="/login" className="btn btn-primary btn-lg">Sign In</a>
             <a href="/signup" className="btn btn-outline btn-lg">Create Account</a>
           </div>
@@ -209,7 +218,7 @@ const Profile = () => {
           Log Out
         </button>
 
-        <p className="profile-version">wixwix v1.0.0</p>
+        <p className="profile-version">wikwik v1.0.0</p>
       </div>
     </div>
   );

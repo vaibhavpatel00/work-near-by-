@@ -61,7 +61,7 @@ const Home = () => {
       address: areaName,
     };
 
-    localStorage.setItem('wixwix_location', JSON.stringify(newLoc));
+    localStorage.setItem('wikwik_location', JSON.stringify(newLoc));
     window.location.reload();
   };
 
@@ -187,7 +187,7 @@ const Home = () => {
             <input
               type="range"
               min="1"
-              max="50"
+              max="100"
               value={radius}
               onChange={e => setRadius(Number(e.target.value))}
               className="radius-slider"
