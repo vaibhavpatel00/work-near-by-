@@ -14,17 +14,16 @@ export const GigProvider = ({ children }) => {
   const { user } = useAuth();
 
   const [gigs, setGigs] = useState(() => {
-    const stored = localStorage.getItem(GIGS_STORAGE_KEY);
-    if (stored) {
-      try {
+    try {
+      localStorage.removeItem('gignearby_gigs'); // remove old storage key
+      const stored = localStorage.getItem(GIGS_STORAGE_KEY);
+      if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          // Filter out legacy mock demo gigs (IDs like gig-1, gig-2, etc.)
-          const realOnly = parsed.filter(g => typeof g.id === 'string' && !g.id.startsWith('gig-'));
-          return realOnly;
+          return parsed.filter(g => typeof g.id === 'string' && !g.id.startsWith('gig-') && !g.id.startsWith('user-'));
         }
-      } catch { /* ignore */ }
-    }
+      }
+    } catch { /* ignore */ }
     return [];
   });
 
@@ -45,9 +44,9 @@ export const GigProvider = ({ children }) => {
           return;
         }
 
-        if (data && isMounted) {
-          // Map DB column names to app camelCase properties
-          const formatted = data.map(g => ({
+        if (isMounted) {
+          const raw = data || [];
+          const formatted = raw.map(g => ({
             id: g.id,
             title: g.title,
             description: g.description,

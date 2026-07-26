@@ -23,7 +23,7 @@ const Profile = () => {
           <div className="guest-icon-wrapper">
             <User size={48} className="text-tertiary" />
           </div>
-          <h2>Welcome to WorkNearby</h2>
+          <h2>Welcome to wixwix</h2>
           <p className="text-secondary mt-2">Sign in to manage your profile, post gigs, and track your work history.</p>
           <div className="guest-actions mt-6">
             <a href="/login" className="btn btn-primary btn-lg">Sign In</a>
@@ -209,7 +209,7 @@ const Profile = () => {
           Log Out
         </button>
 
-        <p className="profile-version">WorkNearby v1.0.0</p>
+        <p className="profile-version">wixwix v1.0.0</p>
       </div>
     </div>
   );

@@ -108,7 +108,7 @@ const Login = () => {
         <div className="auth-header">
           <div className="auth-logo">
             <span className="auth-logo-icon">⚡</span>
-            <h1 className="auth-logo-text">WorkNearby</h1>
+            <h1 className="auth-logo-text">wixwix</h1>
           </div>
           <p className="auth-subtitle">Real-Time Local Work Marketplace</p>
         </div>

@@ -18,10 +18,12 @@
   font-weight: 800;
   line-height: 1.15;
   margin-bottom: var(--space-3);
+  color: var(--text-primary);
 }
 
 .hero-highlight {
-  background: linear-gradient(135deg, var(--primary-600), var(--accent-600));
+  color: #818cf8;
+  background: linear-gradient(135deg, #818cf8, #c084fc);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -30,7 +32,7 @@
 .hero-subtitle {
   color: var(--text-secondary);
   font-size: var(--fs-sm);
-  max-width: 300px;
+  max-width: 320px;
   margin: 0 auto;
 }
 
@@ -58,7 +60,7 @@
   font-family: var(--font-heading);
   font-size: var(--fs-xl);
   font-weight: 800;
-  color: var(--primary-600);
+  color: var(--primary-400);
 }
 
 .hero-stat-label {
@@ -77,6 +79,118 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+/* Location Header Chip Above Search Bar */
+.location-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+}
+
+.location-header-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.location-header-pin {
+  color: #818cf8;
+}
+
+.location-header-text {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.location-header-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+
+.location-header-btn {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: #818cf8;
+  background: rgba(129, 140, 248, 0.12);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: var(--radius-md);
+  padding: 4px var(--space-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.location-header-btn:hover {
+  background: rgba(129, 140, 248, 0.25);
+}
+
+/* Area Search Modal / Selector */
+.area-picker-dropdown {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-lg);
+}
+
+.area-picker-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.area-picker-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  padding-left: var(--space-8);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  outline: none;
+}
+
+.area-picker-input:focus {
+  border-color: var(--border-color-focus);
+}
+
+.area-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.area-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.area-suggestion-item:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .search-bar {
@@ -170,7 +284,7 @@
 }
 
 .category-chip.active {
-  background: var(--cat-bg, rgba(99, 102, 241, 0.15));
+  background: var(--cat-bg, rgba(99, 102, 241, 0.2));
   border-color: var(--cat-color, var(--primary-400));
   color: var(--cat-color, var(--primary-400));
 }
@@ -185,6 +299,7 @@
 .feed-title {
   font-size: var(--fs-lg);
   font-weight: 700;
+  color: var(--text-primary);
 }
 
 .feed-count {
@@ -193,6 +308,7 @@
   background: var(--bg-card);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
 }
 
 .feed-list {
@@ -206,17 +322,21 @@
   text-align: center;
   padding: var(--space-12) var(--space-4);
   color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
 }
 
 .feed-empty-icon {
   font-size: 3rem;
   margin-bottom: var(--space-4);
-  opacity: 0.5;
+  opacity: 0.7;
 }
 
 .feed-empty h3 {
   font-size: var(--fs-lg);
   margin-bottom: var(--space-2);
+  color: var(--text-primary);
 }
 
 .feed-empty p {

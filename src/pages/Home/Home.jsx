@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Search, MapPin, Zap } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, MapPin, Zap, Navigation, ChevronDown, Check } from 'lucide-react';
 import { useGigs } from '../../context/GigContext';
 import { useLocation } from '../../context/LocationContext';
 import { CATEGORIES } from '../../data/categories';
@@ -9,8 +9,13 @@ import './Home.css';
 const Home = () => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showAreaPicker, setShowAreaPicker] = useState(false);
+  const [areaSearchQuery, setAreaSearchQuery] = useState('');
+  const [areaSuggestions, setAreaSuggestions] = useState([]);
+  const [searchingArea, setSearchingArea] = useState(false);
+
   const { getNearbyGigs } = useGigs();
-  const { location, radius, setRadius } = useLocation();
+  const { location, radius, setRadius, requestLocation, locating } = useLocation();
 
   const nearbyGigs = useMemo(
     () => getNearbyGigs(selectedCategory, search),
@@ -18,6 +23,47 @@ const Home = () => {
   );
 
   const activeGigs = nearbyGigs.filter(g => g.status === 'active');
+
+  // Search places using OpenStreetMap Nominatim
+  useEffect(() => {
+    if (!areaSearchQuery.trim() || areaSearchQuery.length < 3) {
+      setAreaSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchingArea(true);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(areaSearchQuery)}&countrycodes=in&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          setAreaSuggestions(data);
+        }
+      } catch (err) {
+        console.info('Area search failed:', err);
+      } finally {
+        setSearchingArea(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [areaSearchQuery]);
+
+  const selectSuggestedArea = (place) => {
+    const lat = parseFloat(place.lat);
+    const lng = parseFloat(place.lon);
+    const parts = place.display_name.split(',');
+    const areaName = parts.slice(0, 2).join(',').trim();
+
+    const newLoc = {
+      lat,
+      lng,
+      address: areaName,
+    };
+
+    localStorage.setItem('wixwix_location', JSON.stringify(newLoc));
+    window.location.reload();
+  };
 
   return (
     <div className="page-content">
@@ -29,7 +75,7 @@ const Home = () => {
               Find <span className="hero-highlight">Local Work</span> Near You
             </h1>
             <p className="hero-subtitle">
-              Post requirements, find workers, make money — all within your neighborhood
+              Post requirements, find workers, make money — all on <strong>wikwik</strong>
             </p>
           </div>
 
@@ -51,8 +97,74 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Search Bar */}
+        {/* Search & Location Bar */}
         <section className="home-search animate-fade-in-up">
+          {/* Location Area Chip Above Search Bar */}
+          <div className="location-header-bar">
+            <div className="location-header-info">
+              <MapPin size={16} className="location-header-pin" />
+              <div>
+                <span className="location-header-text">
+                  {locating ? 'Locating your GPS...' : (location.address || 'Set your location area')}
+                </span>
+                <span className="location-header-sub">({radius} km radius)</span>
+              </div>
+            </div>
+            <button
+              className="location-header-btn"
+              onClick={() => setShowAreaPicker(!showAreaPicker)}
+            >
+              Change Area <ChevronDown size={12} style={{ display: 'inline', marginLeft: '2px' }} />
+            </button>
+          </div>
+
+          {/* Area Picker Dropdown / Search Modal */}
+          {showAreaPicker && (
+            <div className="area-picker-dropdown animate-fade-in">
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => { requestLocation(); setShowAreaPicker(false); }}
+                  disabled={locating}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  <Navigation size={14} /> Use Live GPS Location
+                </button>
+              </div>
+
+              <div className="area-picker-input-wrapper">
+                <Search size={14} className="input-icon" />
+                <input
+                  type="text"
+                  className="area-picker-input"
+                  placeholder="Type specific area or city (e.g. Hitech City, Madhapur, Ameerpet, Bengaluru...)"
+                  value={areaSearchQuery}
+                  onChange={e => setAreaSearchQuery(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              {searchingArea && <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Searching places...</p>}
+
+              {areaSuggestions.length > 0 && (
+                <div className="area-suggestions">
+                  {areaSuggestions.map((place, idx) => (
+                    <button
+                      key={idx}
+                      className="area-suggestion-item"
+                      onClick={() => selectSuggestedArea(place)}
+                    >
+                      <MapPin size={12} color="#818cf8" />
+                      <span>{place.display_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Work Search Input */}
           <div className="search-bar">
             <div className="input-icon-wrapper" style={{ flex: 1 }}>
               <Search size={18} className="input-icon" />
@@ -128,9 +240,9 @@ const Home = () => {
             </div>
           ) : (
             <div className="feed-empty">
-              <div className="feed-empty-icon">🔍</div>
-              <h3>No work found nearby</h3>
-              <p>Try increasing your radius or changing the category filter</p>
+              <div className="feed-empty-icon">📍</div>
+              <h3>No active work in this area</h3>
+              <p>Be the first to post work on <strong>wikwik</strong> or increase your search radius!</p>
             </div>
           )}
         </section>

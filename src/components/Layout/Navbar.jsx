@@ -14,7 +14,7 @@ const Navbar = () => {
       <div className="navbar-inner">
         <Link to="/" className="navbar-brand">
           <span className="brand-icon">⚡</span>
-          <span className="brand-text">WorkNearby</span>
+          <span className="brand-text">wixwix</span>
         </Link>
 
         <button className="navbar-location" onClick={requestLocation} disabled={locating}>
