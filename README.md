@@ -14,6 +14,7 @@ Setup and Running Locally:
 3 Copy .env.example to .env and set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
 4 Run npm run dev to start the local development server.
 
+Updated readme to trigger vercel build.
 Deploying to Vercel:
 1 Connect this repository to your Vercel account.
 2 Configure environment variables in the Vercel project settings.
