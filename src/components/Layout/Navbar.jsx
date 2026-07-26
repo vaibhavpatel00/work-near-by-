@@ -13,7 +13,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-inner">
         <Link to="/" className="navbar-brand">
-          <span className="brand-icon">⚡</span>
+          <img src="/wikwik-logo.png" alt="wikwik" className="brand-logo" />
           <span className="brand-text">wikwik</span>
         </Link>
 

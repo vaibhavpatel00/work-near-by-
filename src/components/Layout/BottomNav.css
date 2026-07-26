@@ -74,10 +74,10 @@
   justify-content: center;
   width: 52px;
   height: 52px;
-  background: linear-gradient(135deg, var(--primary-500), var(--accent-500));
+  background: #3b82f6;
   border-radius: var(--radius-full);
   color: white;
-  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.35);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
   transition: all var(--transition-base);
   margin-top: -16px;
 }

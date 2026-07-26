@@ -75,7 +75,7 @@ const Login = () => {
       <div className="auth-container animate-fade-in-up">
         <div className="auth-header">
           <div className="auth-logo">
-            <span className="auth-logo-icon">⚡</span>
+            <img src="/wikwik-logo.png" alt="wikwik" className="auth-logo-img" />
             <h1 className="auth-logo-text">wikwik</h1>
           </div>
           <p className="auth-subtitle">Hyperlocal Work Marketplace</p>
