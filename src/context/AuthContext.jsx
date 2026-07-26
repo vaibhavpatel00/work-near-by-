@@ -65,28 +65,55 @@ export const AuthProvider = ({ children }) => {
   };
 
   const sendOtp = async (email, metadata = {}) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        data: metadata,
-        shouldCreateUser: true,
-      },
-    });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          data: metadata,
+          shouldCreateUser: true,
+        },
+      });
+      if (error) {
+        console.error('Supabase signInWithOtp Error:', error);
+        throw error;
+      }
+      return data;
+    } catch (err) {
+      console.error('sendOtp catch error:', err);
+      throw err;
+    }
   };
 
   const verifyOtp = async (email, token) => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    });
-    if (error) throw error;
-    const mapped = mapUser(data.user);
-    setUser(mapped);
-    setSession(data.session);
-    return mapped;
+    try {
+      // Try verifying with type 'email' first, then fallback to 'signup'
+      let { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'email',
+      });
+
+      if (error) {
+        const fallback = await supabase.auth.verifyOtp({
+          email,
+          token,
+          type: 'signup',
+        });
+        if (fallback.error) {
+          console.error('Supabase verifyOtp Error:', error, fallback.error);
+          throw fallback.error;
+        }
+        data = fallback.data;
+      }
+
+      const mapped = mapUser(data.user);
+      setUser(mapped);
+      setSession(data.session);
+      return mapped;
+    } catch (err) {
+      console.error('verifyOtp catch error:', err);
+      throw err;
+    }
   };
 
   const signup = async (name, email, phone, password) => {

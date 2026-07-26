@@ -18,6 +18,14 @@ const Login = () => {
   const { login, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
 
+  const formatErr = (err, defaultMsg) => {
+    if (!err) return defaultMsg;
+    if (typeof err === 'string' && err.trim() && err !== '{}') return err;
+    if (err.message && typeof err.message === 'string' && err.message !== '{}') return err.message;
+    if (err.error_description && typeof err.error_description === 'string') return err.error_description;
+    return defaultMsg;
+  };
+
   // Password submission
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
@@ -38,7 +46,7 @@ const Login = () => {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Invalid email or password');
+      setError(formatErr(err, 'Invalid email or password'));
     } finally {
       setLoading(false);
     }
@@ -65,7 +73,8 @@ const Login = () => {
       setMessage(`OTP passcode sent to ${email}. Check your inbox!`);
       setStep('verify');
     } catch (err) {
-      setError(err.message || 'Failed to send OTP code');
+      console.error('Login Send OTP Error:', err);
+      setError(formatErr(err, 'Failed to send OTP code. Please check Supabase Auth settings.'));
     } finally {
       setLoading(false);
     }
@@ -86,7 +95,8 @@ const Login = () => {
       await verifyOtp(email, otpToken);
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Invalid or expired OTP code');
+      console.error('Login Verify OTP Error:', err);
+      setError(formatErr(err, 'Invalid or expired OTP code'));
     } finally {
       setLoading(false);
     }
