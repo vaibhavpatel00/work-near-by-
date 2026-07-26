@@ -1,0 +1,118 @@
+.explore-page {
+  padding: var(--space-6);
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.explore-header h1 {
+  font-size: var(--fs-3xl);
+  margin-bottom: var(--space-1);
+}
+
+.explore-search {
+  margin-bottom: var(--space-2);
+}
+
+.explore-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.section-header h3 {
+  font-size: var(--fs-base);
+  font-weight: 700;
+}
+
+/* Category Grid */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-3);
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.category-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--cat-bg, rgba(99,102,241,0.05)) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.category-card:hover::after {
+  opacity: 1;
+}
+
+.category-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-xl);
+  background: var(--cat-bg, rgba(99, 102, 241, 0.15));
+  color: var(--cat-color, var(--primary-400));
+  transition: transform var(--transition-spring);
+  position: relative;
+  z-index: 1;
+}
+
+.category-card:hover .category-card-icon {
+  transform: scale(1.1) translateY(-2px);
+}
+
+.category-card-name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  position: relative;
+  z-index: 1;
+}
+
+.category-card-count {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  position: relative;
+  z-index: 1;
+}
+
+/* Category View */
+.explore-category-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.explore-category-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.explore-category-header h2 {
+  font-size: var(--fs-xl);
+}

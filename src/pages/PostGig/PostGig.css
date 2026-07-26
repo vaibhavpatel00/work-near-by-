@@ -1,0 +1,210 @@
+.post-page {
+  padding: var(--space-6);
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-height: calc(100vh - var(--navbar-height) - var(--bottomnav-height));
+}
+
+/* Progress bar */
+.post-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  padding: 0 var(--space-2);
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  position: relative;
+  z-index: 2;
+}
+
+.progress-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  transition: all var(--transition-fast);
+}
+
+.progress-step.active .progress-dot {
+  background: var(--primary-500);
+  border-color: var(--primary-400);
+  color: white;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+.progress-step.done .progress-dot {
+  background: var(--success-500);
+  border-color: var(--success-400);
+  color: white;
+}
+
+.progress-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.progress-step.active .progress-label {
+  color: var(--primary-300);
+}
+
+.progress-line {
+  position: absolute;
+  top: 14px;
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  background: var(--bg-tertiary);
+  z-index: 1;
+}
+
+.progress-line-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-500), var(--accent-500));
+  transition: width var(--transition-base);
+}
+
+/* Step Content */
+.post-step-content {
+  flex: 1;
+}
+
+.post-step-content h2 {
+  font-size: var(--fs-2xl);
+  margin-bottom: var(--space-1);
+}
+
+/* Step 0: Category Selection */
+.category-select-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.category-select-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.category-select-item:hover {
+  border-color: var(--border-color-hover);
+  color: var(--text-primary);
+}
+
+.category-select-item.selected {
+  background: var(--cat-bg, rgba(99, 102, 241, 0.15));
+  border-color: var(--cat-color, var(--primary-400));
+  color: var(--cat-color, var(--primary-400));
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+}
+
+/* Step Hints */
+.input-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+/* Amount Input */
+.amount-input-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6);
+}
+
+.amount-currency {
+  font-size: var(--fs-4xl);
+  font-weight: 800;
+  color: var(--success-400);
+}
+
+.amount-input {
+  font-family: var(--font-heading);
+  font-size: var(--fs-4xl);
+  font-weight: 800;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 180px;
+}
+
+/* Review Card */
+.review-card {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.review-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.review-label {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.review-value {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.review-desc {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.review-amount {
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--success-400);
+}
+
+/* Post Actions */
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-4);
+}

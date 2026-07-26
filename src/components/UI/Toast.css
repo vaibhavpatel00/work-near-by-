@@ -1,0 +1,10 @@
+.toast-close {
+  margin-left: auto;
+  opacity: 0.6;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}

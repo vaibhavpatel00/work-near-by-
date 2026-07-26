@@ -1,0 +1,96 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--bottomnav-height);
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-color);
+}
+
+.bottom-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 var(--space-2);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2);
+  color: var(--text-tertiary);
+  text-decoration: none;
+  font-size: var(--fs-xs);
+  transition: all var(--transition-fast);
+  position: relative;
+  min-width: 48px;
+  border-radius: var(--radius-lg);
+}
+
+.bottom-nav-item:hover {
+  color: var(--text-secondary);
+}
+
+.bottom-nav-item.active {
+  color: var(--primary-500);
+}
+
+.bottom-nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 3px;
+  background: var(--primary-500);
+  border-radius: 0 0 var(--radius-full) var(--radius-full);
+}
+
+.nav-label {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Center Post Button */
+.bottom-nav-item.center-btn {
+  padding: 0;
+}
+
+.center-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, var(--primary-500), var(--accent-500));
+  border-radius: var(--radius-full);
+  color: white;
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.35);
+  transition: all var(--transition-base);
+  margin-top: -16px;
+}
+
+.center-btn-icon:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 28px rgba(79, 70, 229, 0.45);
+}
+
+.bottom-nav-item.center-btn.active .center-btn-icon {
+  box-shadow: 0 6px 28px rgba(79, 70, 229, 0.5);
+}
+
+.bottom-nav-item.center-btn::before {
+  display: none;
+}
