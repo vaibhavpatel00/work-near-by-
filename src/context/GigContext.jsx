@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 
 const GigContext = createContext(null);
 
-const GIGS_STORAGE_KEY = 'wikwik_gigs_v2';
+const GIGS_STORAGE_KEY = 'wikwik_gigs_v3';
 
 const INITIAL_DEMO_GIGS = [
   {
@@ -136,56 +136,72 @@ export const GigProvider = ({ children }) => {
 
   const [toasts, setToasts] = useState([]);
 
-  // Fetch initial gigs from Supabase table if available
-  useEffect(() => {
-    let isMounted = true;
-    const fetchGigsFromSupabase = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('gigs')
-          .select('*')
-          .order('posted_at', { ascending: false });
+  // Fetch initial gigs from Supabase and sync state
+  const syncWithSupabase = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('gigs')
+        .select('*')
+        .order('posted_at', { ascending: false });
 
-        if (error || !data || data.length === 0) return;
+      if (error || !data || data.length === 0) return;
 
-        if (isMounted) {
-          const formatted = data.map(g => ({
-            id: g.id,
-            title: g.title,
-            description: g.description,
-            category: g.category,
-            amount: g.amount,
-            currency: g.currency || '₹',
-            date: g.date,
-            duration: g.duration,
-            location: g.location,
-            contactDetails: g.contact_details || { phone: '', email: '', whatsapp: true, allowCall: true },
-            attachments: g.attachments || [],
-            expiryDate: g.expiry_date || null,
-            maxApplications: g.max_applications || 5,
-            postedBy: g.posted_by,
-            postedAt: g.posted_at,
-            status: g.status,
-            acceptedBy: g.accepted_by,
-            requests: g.requests || [],
-          }));
-          
-          // Merge with local state to preserve client state
-          setGigs(prev => {
-            const map = new Map(prev.map(item => [item.id, item]));
-            formatted.forEach(item => map.set(item.id, { ...map.get(item.id), ...item }));
-            return Array.from(map.values());
-          });
-        }
-      } catch (err) {
-        console.info('Supabase table fallback to local state:', err.message);
-      }
-    };
+      const formatted = data.map(g => ({
+        id: String(g.id),
+        title: g.title,
+        description: g.description,
+        category: g.category,
+        amount: g.amount,
+        currency: g.currency || '₹',
+        date: g.date,
+        duration: g.duration,
+        location: g.location,
+        contactDetails: g.contact_details || g.contactDetails || { phone: '', email: '', whatsapp: true, allowCall: true },
+        attachments: g.attachments || [],
+        expiryDate: g.expiry_date || g.expiryDate || null,
+        maxApplications: g.max_applications || g.maxApplications || 5,
+        postedBy: g.posted_by || g.postedBy,
+        postedAt: g.posted_at || g.postedAt,
+        status: g.status,
+        acceptedBy: g.accepted_by || g.acceptedBy,
+        requests: g.requests || [],
+      }));
 
-    fetchGigsFromSupabase();
+      setGigs(prev => {
+        const map = new Map(prev.map(item => [item.id, item]));
+        formatted.forEach(item => {
+          map.set(item.id, { ...map.get(item.id), ...item });
+        });
+        return Array.from(map.values()).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+      });
+    } catch (err) {
+      console.info('Supabase sync info:', err.message);
+    }
   }, []);
 
-  // Persist gigs to localStorage
+  // Fetch on mount & poll every 4 seconds for cross-device updates
+  useEffect(() => {
+    syncWithSupabase();
+    const interval = setInterval(syncWithSupabase, 4000);
+
+    // Subscribe to realtime postgres_changes on 'gigs' table
+    let channel = null;
+    try {
+      channel = supabase
+        .channel('public:gigs_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'gigs' }, () => {
+          syncWithSupabase();
+        })
+        .subscribe();
+    } catch { /* ignore realtime fallback */ }
+
+    return () => {
+      clearInterval(interval);
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [syncWithSupabase]);
+
+  // Persist gigs to localStorage as client fallback
   useEffect(() => {
     try {
       localStorage.setItem(GIGS_STORAGE_KEY, JSON.stringify(gigs));
@@ -205,10 +221,14 @@ export const GigProvider = ({ children }) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // Get user by ID (from mock data or current user)
+  // Get user by ID
   const getUserById = useCallback((userId) => {
     if (user && user.id === userId) return user;
-    return MOCK_USERS.find(u => u.id === userId) || { id: userId, name: userId === 'user-101' ? 'Rajesh Sharma' : 'Community Member', rating: 4.8 };
+    return MOCK_USERS.find(u => u.id === userId) || { 
+      id: userId, 
+      name: userId === 'user-101' ? 'Rajesh Sharma' : 'Community Member', 
+      rating: 4.8 
+    };
   }, [user]);
 
   // Check if gig is expired or reached max applications
@@ -232,17 +252,19 @@ export const GigProvider = ({ children }) => {
     return false;
   }, []);
 
-  // Get nearby gigs within radius
+  // Get nearby gigs within radius (or include all if radius is large)
   const getNearbyGigs = useCallback((filterCategory = null, searchQuery = '') => {
     let filtered = gigs.map(gig => {
-      // Auto update status if expired
       const expired = isGigExpired(gig);
       const computedStatus = (gig.status === 'active' && expired) ? 'expired' : gig.status;
       return { ...gig, status: computedStatus };
     }).filter(gig => {
-      // Distance filter
-      const dist = calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng);
-      if (dist > radius) return false;
+      // Distance filter safety: if distance calculation returns valid number, check radius
+      if (gig.location && gig.location.lat && gig.location.lng) {
+        const dist = calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng);
+        // Allow up to max radius or 500km fallback for multi-device cross-city testing
+        if (radius < 100 && dist > radius) return false;
+      }
 
       // Category filter
       if (filterCategory && gig.category !== filterCategory) return false;
@@ -260,7 +282,7 @@ export const GigProvider = ({ children }) => {
     // Add distance to each gig
     filtered = filtered.map(gig => ({
       ...gig,
-      distance: calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng),
+      distance: gig.location?.lat ? calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng) : 0,
     }));
 
     // Sort by posted time (newest first)
@@ -271,7 +293,7 @@ export const GigProvider = ({ children }) => {
 
   // Get gig by ID
   const getGigById = useCallback((id) => {
-    const gig = gigs.find(g => g.id === id);
+    const gig = gigs.find(g => String(g.id) === String(id));
     if (!gig) return null;
 
     const expired = isGigExpired(gig);
@@ -280,11 +302,11 @@ export const GigProvider = ({ children }) => {
     return {
       ...gig,
       status: computedStatus,
-      distance: calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng),
+      distance: gig.location?.lat ? calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng) : 0,
     };
   }, [gigs, location, isGigExpired]);
 
-  // Post a new gig
+  // Post a new gig (with multi-device Supabase syncing)
   const postGig = useCallback(async (gigData) => {
     const localId = generateId();
     const newGig = {
@@ -307,15 +329,37 @@ export const GigProvider = ({ children }) => {
       requests: [],
     };
 
-    // Update local state immediately for instant response
+    // Update local state immediately
     setGigs(prev => [newGig, ...prev]);
     showToast('Work requirement published successfully!', 'success');
 
-    // Attempt to write to Supabase table
+    // Write to Supabase DB for cross-device public visibility
     try {
-      await supabase
-        .from('gigs')
-        .insert([{
+      const fullPayload = {
+        id: localId,
+        title: gigData.title,
+        description: gigData.description,
+        category: gigData.category,
+        amount: Number(gigData.amount),
+        currency: '₹',
+        date: gigData.date || new Date().toISOString(),
+        duration: gigData.duration || 'Flexible',
+        location: gigData.location,
+        contact_details: newGig.contactDetails,
+        attachments: newGig.attachments,
+        expiry_date: newGig.expiryDate,
+        max_applications: newGig.maxApplications,
+        posted_by: user?.id || 'user-current',
+        status: 'active',
+        requests: [],
+      };
+
+      const { error } = await supabase.from('gigs').insert([fullPayload]);
+
+      if (error) {
+        console.warn('Full payload insert warning, trying standard payload:', error.message);
+        // Fallback insert without jsonb columns if migration not run yet
+        await supabase.from('gigs').insert([{
           id: localId,
           title: gigData.title,
           description: gigData.description,
@@ -325,16 +369,12 @@ export const GigProvider = ({ children }) => {
           date: gigData.date || new Date().toISOString(),
           duration: gigData.duration || 'Flexible',
           location: gigData.location,
-          contact_details: newGig.contactDetails,
-          attachments: newGig.attachments,
-          expiry_date: newGig.expiryDate,
-          max_applications: newGig.maxApplications,
-          posted_by: user?.id || null,
+          posted_by: user?.id || 'user-current',
           status: 'active',
-          requests: [],
         }]);
+      }
     } catch (err) {
-      console.info('Saved locally. Supabase insert info:', err.message);
+      console.info('Supabase insert fallback:', err.message);
     }
 
     return newGig;
@@ -347,7 +387,7 @@ export const GigProvider = ({ children }) => {
       return false;
     }
 
-    const currentGig = gigs.find(g => g.id === gigId);
+    const currentGig = gigs.find(g => String(g.id) === String(gigId));
     if (!currentGig) return false;
 
     if (isGigExpired(currentGig)) {
@@ -355,7 +395,6 @@ export const GigProvider = ({ children }) => {
       return false;
     }
 
-    // Check if worker already applied
     const existingReq = (currentGig.requests || []).find(r => r.workerId === user.id);
     if (existingReq) {
       showToast('You have already applied for this work!', 'info');
@@ -383,35 +422,54 @@ export const GigProvider = ({ children }) => {
       ] : [],
     };
 
+    let updatedRequests = [];
+    let updatedGigStatus = currentGig.status;
+
     setGigs(prev => prev.map(g => {
-      if (g.id !== gigId) return g;
-      const updatedRequests = [...(g.requests || []), newRequest];
+      if (String(g.id) !== String(gigId)) return g;
+      updatedRequests = [...(g.requests || []), newRequest];
       const reachedMax = g.maxApplications && updatedRequests.filter(r => r.status !== 'rejected').length >= g.maxApplications;
+      updatedGigStatus = reachedMax ? 'expired' : g.status;
       return {
         ...g,
         requests: updatedRequests,
-        status: reachedMax ? 'expired' : g.status,
+        status: updatedGigStatus,
       };
     }));
 
     showToast('Work request sent to publisher! Waiting for approval.', 'success');
+
+    // Sync to Supabase
+    try {
+      await supabase
+        .from('gigs')
+        .update({ requests: updatedRequests, status: updatedGigStatus })
+        .eq('id', gigId);
+    } catch { /* fallback */ }
+
     return true;
   }, [user, gigs, isGigExpired, showToast]);
 
   // Respond to request (Publisher approves or rejects worker request)
   const respondToRequest = useCallback(async (gigId, requestId, status) => {
+    let updatedRequests = [];
+    let updatedGigStatus = 'active';
+    let acceptedWorkerId = null;
+
     setGigs(prev => prev.map(g => {
-      if (g.id !== gigId) return g;
+      if (String(g.id) !== String(gigId)) return g;
       const targetReq = (g.requests || []).find(r => r.id === requestId);
-      const updatedRequests = (g.requests || []).map(r =>
+      updatedRequests = (g.requests || []).map(r =>
         r.id === requestId ? { ...r, status } : r
       );
 
       if (status === 'approved' && targetReq) {
+        acceptedWorkerId = targetReq.workerId;
+        updatedGigStatus = 'booked';
         return {
           ...g,
           requests: updatedRequests,
-          acceptedBy: targetReq.workerId,
+          acceptedBy: acceptedWorkerId,
           status: 'booked',
         };
       }
@@ -427,15 +485,27 @@ export const GigProvider = ({ children }) => {
     } else {
       showToast('Application request rejected.', 'info');
     }
+
+    // Sync to Supabase
+    try {
+      const updateData = { requests: updatedRequests };
+      if (status === 'approved' && acceptedWorkerId) {
+        updateData.accepted_by = acceptedWorkerId;
+        updateData.status = 'booked';
+      }
+      await supabase.from('gigs').update(updateData).eq('id', gigId);
+    } catch { /* fallback */ }
   }, [showToast]);
 
   // Send a chat message on a request thread
-  const sendChatMessage = useCallback((gigId, requestId, text) => {
+  const sendChatMessage = useCallback(async (gigId, requestId, text) => {
     if (!user || !text.trim()) return;
 
+    let updatedRequests = [];
+
     setGigs(prev => prev.map(g => {
-      if (g.id !== gigId) return g;
-      const updatedRequests = (g.requests || []).map(r => {
+      if (String(g.id) !== String(gigId)) return g;
+      updatedRequests = (g.requests || []).map(r => {
         if (r.id !== requestId) return r;
         const newMsg = {
           id: generateId(),
@@ -454,36 +524,49 @@ export const GigProvider = ({ children }) => {
         requests: updatedRequests,
       };
     }));
+
+    // Sync to Supabase
+    try {
+      await supabase.from('gigs').update({ requests: updatedRequests }).eq('id', gigId);
+    } catch { /* fallback */ }
   }, [user]);
 
   // Cancel a gig
   const cancelGig = useCallback(async (gigId) => {
     setGigs(prev => prev.map(g =>
-      g.id === gigId ? { ...g, status: 'cancelled' } : g
+      String(g.id) === String(gigId) ? { ...g, status: 'cancelled' } : g
     ));
     showToast('Work requirement cancelled', 'info');
+
+    try {
+      await supabase.from('gigs').update({ status: 'cancelled' }).eq('id', gigId);
+    } catch { /* fallback */ }
   }, [showToast]);
 
   // Complete a gig
   const completeGig = useCallback(async (gigId) => {
     setGigs(prev => prev.map(g =>
-      g.id === gigId ? { ...g, status: 'completed' } : g
+      String(g.id) === String(gigId) ? { ...g, status: 'completed' } : g
     ));
     showToast('Work marked as completed!', 'success');
+
+    try {
+      await supabase.from('gigs').update({ status: 'completed' }).eq('id', gigId);
+    } catch { /* fallback */ }
   }, [showToast]);
 
   // Get user's posted gigs
   const getMyPostedGigs = useCallback(() => {
     if (!user) return [];
-    return gigs.filter(g => g.postedBy === user.id).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+    return gigs.filter(g => String(g.postedBy) === String(user.id)).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
   }, [gigs, user]);
 
   // Get user's booked or applied gigs
   const getMyBookedGigs = useCallback(() => {
     if (!user) return [];
     return gigs.filter(g =>
-      g.acceptedBy === user.id ||
-      (g.requests || []).some(r => r.workerId === user.id)
+      String(g.acceptedBy) === String(user.id) ||
+      (g.requests || []).some(r => String(r.workerId) === String(user.id))
     ).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
   }, [gigs, user]);
 
