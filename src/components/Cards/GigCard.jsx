@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, IndianRupee } from 'lucide-react';
+import { MapPin, Clock, IndianRupee, Paperclip, Users } from 'lucide-react';
 import { getCategoryById } from '../../data/categories';
 import { useGigs } from '../../context/GigContext';
 import { formatDistance, timeAgo, formatDate, formatAmount, truncateText, getInitials } from '../../utils/helpers';
@@ -11,6 +11,9 @@ const GigCard = ({ gig }) => {
   const poster = getUserById(gig.postedBy);
   const CategoryIcon = category?.icon;
 
+  const appCount = (gig.requests || []).length;
+  const maxApps = gig.maxApplications || 5;
+
   return (
     <Link to={`/gig/${gig.id}`} className={`gig-card glass-card ${category?.cssClass || ''}`}>
       <div className="gig-card-header">
@@ -18,7 +21,14 @@ const GigCard = ({ gig }) => {
           {CategoryIcon && <CategoryIcon size={14} />}
           <span>{category?.name || gig.category}</span>
         </div>
-        <span className="gig-card-time">{timeAgo(gig.postedAt)}</span>
+        <div className="gig-card-header-right">
+          {gig.attachments && gig.attachments.length > 0 && (
+            <span className="att-badge-icon" title={`${gig.attachments.length} attachment(s)`}>
+              <Paperclip size={12} />
+            </span>
+          )}
+          <span className="gig-card-time">{timeAgo(gig.postedAt)}</span>
+        </div>
       </div>
 
       <h3 className="gig-card-title">{gig.title}</h3>
@@ -48,18 +58,28 @@ const GigCard = ({ gig }) => {
           </div>
           <span className="poster-name">{poster.name}</span>
         </div>
-        {gig.status === 'active' && (
-          <span className="badge badge-success">Open</span>
-        )}
-        {gig.status === 'booked' && (
-          <span className="badge badge-warning">Booked</span>
-        )}
-        {gig.status === 'completed' && (
-          <span className="badge badge-primary">Done</span>
-        )}
-        {gig.status === 'cancelled' && (
-          <span className="badge badge-error">Cancelled</span>
-        )}
+
+        <div className="gig-card-badges">
+          <span className="badge-apps-count">
+            <Users size={11} /> {appCount}/{maxApps}
+          </span>
+
+          {gig.status === 'active' && (
+            <span className="badge badge-success">Open</span>
+          )}
+          {gig.status === 'expired' && (
+            <span className="badge badge-error">Expired</span>
+          )}
+          {gig.status === 'booked' && (
+            <span className="badge badge-warning">Booked</span>
+          )}
+          {gig.status === 'completed' && (
+            <span className="badge badge-primary">Done</span>
+          )}
+          {gig.status === 'cancelled' && (
+            <span className="badge badge-error">Cancelled</span>
+          )}
+        </div>
       </div>
     </Link>
   );

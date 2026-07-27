@@ -49,7 +49,7 @@ const History = () => {
             className={`history-tab ${tab === 'booked' ? 'active' : ''}`}
             onClick={() => setTab('booked')}
           >
-            My Bookings ({bookedGigs.length})
+            My Applications & Bookings ({bookedGigs.length})
           </button>
         </div>
 

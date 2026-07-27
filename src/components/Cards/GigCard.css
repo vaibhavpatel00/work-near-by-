@@ -125,3 +125,38 @@
   color: var(--text-secondary);
   font-weight: 600;
 }
+
+.gig-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.att-badge-icon {
+  color: var(--primary-400);
+  background: rgba(99, 102, 241, 0.15);
+  border-radius: var(--radius-full);
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+}
+
+.gig-card-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.badge-apps-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+

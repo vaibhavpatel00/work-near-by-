@@ -141,15 +141,282 @@
   margin-top: 2px;
 }
 
+/* Contact Card */
 .contact-card {
   border-color: var(--primary-500);
   background: rgba(99, 102, 241, 0.1);
 }
 
-.contact-row {
+.publisher-contact-card {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.1);
+}
+
+.publisher-contact-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .publisher-contact-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.contact-label {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.contact-val {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.contact-actions-bar {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.btn-whatsapp {
+  background: #25d366;
+  color: white;
+  border: none;
+}
+
+.btn-whatsapp:hover {
+  background: #1da851;
+  color: white;
+}
+
+/* Highlight / Expiry Info Card */
+.highlight-card {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+/* Attachments Display */
+.published-attachments-container {
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--space-3);
+}
+
+.attachments-title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.attachments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.attachment-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.att-image-preview {
+  position: relative;
+  height: 110px;
+  overflow: hidden;
+}
+
+.att-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.att-type-tag {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.att-doc-preview {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.att-doc-name {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-primary);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.att-download-link {
+  font-size: 11px;
+  color: var(--primary-400);
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Applicants List */
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.request-item-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+}
+
+.request-item-card.approved {
+  border-color: var(--success-500);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.req-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.req-worker-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.req-worker-name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.status-pill {
+  font-size: 11px;
+  font-weight: 600;
+  display: block;
+}
+
+.status-pill.pending { color: var(--warning-400); }
+.status-pill.approved { color: var(--success-400); }
+.status-pill.rejected { color: var(--error-400); }
+
+.req-message {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: var(--space-2);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+}
+
+.req-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Worker Status Card */
+.my-request-card {
+  border: 1px solid var(--primary-500);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.status-badge-lg {
+  display: block;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: center;
+}
+
+.status-badge-lg.pending {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning-300);
+  border: 1px solid var(--warning-500);
+}
+
+.status-badge-lg.approved {
+  background: rgba(34, 197, 94, 0.2);
+  color: var(--success-300);
+  border: 1px solid var(--success-500);
+}
+
+.status-badge-lg.rejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--error-300);
+  border: 1px solid var(--error-500);
+}
+
+.my-req-note {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* Apply Modal */
+.apply-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.apply-modal {
+  width: 100%;
+  max-width: 480px;
+  padding: var(--space-6);
+  border-radius: var(--radius-2xl);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
   gap: var(--space-2);
 }
 
@@ -178,3 +445,4 @@
   text-align: center;
   padding: var(--space-12) var(--space-4);
 }
+

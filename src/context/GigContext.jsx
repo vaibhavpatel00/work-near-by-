@@ -7,7 +7,115 @@ import { supabase } from '../lib/supabase';
 
 const GigContext = createContext(null);
 
-const GIGS_STORAGE_KEY = 'gignearby_gigs';
+const GIGS_STORAGE_KEY = 'wikwik_gigs_v2';
+
+const INITIAL_DEMO_GIGS = [
+  {
+    id: 'demo-gig-1',
+    title: 'Experienced Driver Needed for Outstation Trip to Pune',
+    description: 'Looking for a verified driver for a 2-day round trip to Pune. SUV vehicle provided. Must have valid DL and experience on highway driving.',
+    category: 'driver',
+    amount: 3500,
+    currency: '₹',
+    date: new Date(Date.now() + 86400000 * 2).toISOString(),
+    duration: '2 Days',
+    location: {
+      address: 'Banjara Hills, Hyderabad',
+      lat: 17.4156,
+      lng: 78.4347,
+    },
+    contactDetails: {
+      phone: '+91 98765 43210',
+      email: 'rajesh.sharma@example.com',
+      whatsapp: true,
+      allowCall: true,
+    },
+    attachments: [
+      {
+        id: 'att-1',
+        name: 'Trip_Route_Details.pdf',
+        type: 'document',
+        url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      },
+      {
+        id: 'att-2',
+        name: 'Car_Vehicle_Photo.jpg',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
+      }
+    ],
+    expiryDate: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0] + 'T23:59',
+    maxApplications: 5,
+    postedBy: 'user-101',
+    postedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+    status: 'active',
+    acceptedBy: null,
+    requests: [
+      {
+        id: 'req-1',
+        workerId: 'user-worker-1',
+        workerName: 'Vikram Singh',
+        workerPhone: '+91 91234 56789',
+        workerEmail: 'vikram.driver@example.com',
+        message: 'Hello sir, I have 8 years of highway driving experience. Available immediately.',
+        status: 'pending',
+        createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+        messages: [
+          {
+            id: 'm-1',
+            senderId: 'user-worker-1',
+            senderName: 'Vikram Singh',
+            text: 'Hello sir, I have 8 years of highway driving experience. Available immediately.',
+            timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+          },
+          {
+            id: 'm-2',
+            senderId: 'user-101',
+            senderName: 'Rajesh Sharma',
+            text: 'Hi Vikram, do you have experience driving heavy SUVs?',
+            timestamp: new Date(Date.now() - 3600000 * 1).toISOString(),
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'demo-gig-2',
+    title: 'House Cleaning & Deep Kitchen Sanitization',
+    description: 'Full 3BHK flat cleaning required before house party. Deep kitchen degreasing, bathroom scrubbing, and floor mopping.',
+    category: 'housekeeping',
+    amount: 1800,
+    currency: '₹',
+    date: new Date(Date.now() + 86400000 * 1).toISOString(),
+    duration: '5 Hours',
+    location: {
+      address: 'Gachibowli, Hyderabad',
+      lat: 17.4401,
+      lng: 78.3489,
+    },
+    contactDetails: {
+      phone: '+91 99887 76655',
+      email: 'priya.kapoor@example.com',
+      whatsapp: true,
+      allowCall: false,
+    },
+    attachments: [
+      {
+        id: 'att-3',
+        name: 'Kitchen_Area.jpg',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80',
+      }
+    ],
+    expiryDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] + 'T18:00',
+    maxApplications: 3,
+    postedBy: 'user-102',
+    postedAt: new Date(Date.now() - 3600000 * 8).toISOString(),
+    status: 'active',
+    acceptedBy: null,
+    requests: []
+  }
+];
 
 export const GigProvider = ({ children }) => {
   const { location, radius } = useLocation();
@@ -15,21 +123,20 @@ export const GigProvider = ({ children }) => {
 
   const [gigs, setGigs] = useState(() => {
     try {
-      localStorage.removeItem('gignearby_gigs'); // remove old storage key
       const stored = localStorage.getItem(GIGS_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(g => typeof g.id === 'string' && !g.id.startsWith('gig-') && !g.id.startsWith('user-'));
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
       }
     } catch { /* ignore */ }
-    return [];
+    return INITIAL_DEMO_GIGS;
   });
 
   const [toasts, setToasts] = useState([]);
 
-  // Fetch initial gigs from Supabase table
+  // Fetch initial gigs from Supabase table if available
   useEffect(() => {
     let isMounted = true;
     const fetchGigsFromSupabase = async () => {
@@ -39,14 +146,10 @@ export const GigProvider = ({ children }) => {
           .select('*')
           .order('posted_at', { ascending: false });
 
-        if (error) {
-          console.info('Supabase gigs query info:', error.message);
-          return;
-        }
+        if (error || !data || data.length === 0) return;
 
         if (isMounted) {
-          const raw = data || [];
-          const formatted = raw.map(g => ({
+          const formatted = data.map(g => ({
             id: g.id,
             title: g.title,
             description: g.description,
@@ -56,65 +159,37 @@ export const GigProvider = ({ children }) => {
             date: g.date,
             duration: g.duration,
             location: g.location,
+            contactDetails: g.contact_details || { phone: '', email: '', whatsapp: true, allowCall: true },
+            attachments: g.attachments || [],
+            expiryDate: g.expiry_date || null,
+            maxApplications: g.max_applications || 5,
             postedBy: g.posted_by,
             postedAt: g.posted_at,
             status: g.status,
             acceptedBy: g.accepted_by,
+            requests: g.requests || [],
           }));
-          setGigs(formatted);
+          
+          // Merge with local state to preserve client state
+          setGigs(prev => {
+            const map = new Map(prev.map(item => [item.id, item]));
+            formatted.forEach(item => map.set(item.id, { ...map.get(item.id), ...item }));
+            return Array.from(map.values());
+          });
         }
       } catch (err) {
-        console.warn('Unable to connect to Supabase gigs table:', err.message);
+        console.info('Supabase table fallback to local state:', err.message);
       }
     };
 
     fetchGigsFromSupabase();
-
-    // Subscribe to realtime changes on 'gigs' table
-    let subscription = null;
-    try {
-      subscription = supabase
-        .channel('public:gigs')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'gigs' }, (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newRow = payload.new;
-            const formatted = {
-              id: newRow.id,
-              title: newRow.title,
-              description: newRow.description,
-              category: newRow.category,
-              amount: newRow.amount,
-              currency: newRow.currency || '₹',
-              date: newRow.date,
-              duration: newRow.duration,
-              location: newRow.location,
-              postedBy: newRow.posted_by,
-              postedAt: newRow.posted_at,
-              status: newRow.status,
-              acceptedBy: newRow.accepted_by,
-            };
-            setGigs(prev => [formatted, ...prev.filter(g => g.id !== formatted.id)]);
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new;
-            setGigs(prev => prev.map(g => g.id === updated.id ? {
-              ...g,
-              status: updated.status,
-              acceptedBy: updated.accepted_by,
-            } : g));
-          }
-        })
-        .subscribe();
-    } catch { /* ignore realtime error if disabled */ }
-
-    return () => {
-      isMounted = false;
-      if (subscription) supabase.removeChannel(subscription);
-    };
   }, []);
 
-  // Persist gigs to localStorage as backup
+  // Persist gigs to localStorage
   useEffect(() => {
-    localStorage.setItem(GIGS_STORAGE_KEY, JSON.stringify(gigs));
+    try {
+      localStorage.setItem(GIGS_STORAGE_KEY, JSON.stringify(gigs));
+    } catch { /* storage limit safety */ }
   }, [gigs]);
 
   // Toast helpers
@@ -133,12 +208,38 @@ export const GigProvider = ({ children }) => {
   // Get user by ID (from mock data or current user)
   const getUserById = useCallback((userId) => {
     if (user && user.id === userId) return user;
-    return MOCK_USERS.find(u => u.id === userId) || { id: userId, name: 'User', rating: 4.8 };
+    return MOCK_USERS.find(u => u.id === userId) || { id: userId, name: userId === 'user-101' ? 'Rajesh Sharma' : 'Community Member', rating: 4.8 };
   }, [user]);
+
+  // Check if gig is expired or reached max applications
+  const isGigExpired = useCallback((gig) => {
+    if (!gig) return false;
+    if (gig.status === 'expired' || gig.status === 'cancelled' || gig.status === 'completed') return true;
+    
+    // Date check
+    if (gig.expiryDate) {
+      const now = new Date();
+      const exp = new Date(gig.expiryDate);
+      if (now > exp) return true;
+    }
+
+    // Max applications check
+    const approvedOrPendingCount = (gig.requests || []).filter(r => r.status !== 'rejected').length;
+    if (gig.maxApplications && approvedOrPendingCount >= gig.maxApplications) {
+      return true;
+    }
+
+    return false;
+  }, []);
 
   // Get nearby gigs within radius
   const getNearbyGigs = useCallback((filterCategory = null, searchQuery = '') => {
-    let filtered = gigs.filter(gig => {
+    let filtered = gigs.map(gig => {
+      // Auto update status if expired
+      const expired = isGigExpired(gig);
+      const computedStatus = (gig.status === 'active' && expired) ? 'expired' : gig.status;
+      return { ...gig, status: computedStatus };
+    }).filter(gig => {
       // Distance filter
       const dist = calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng);
       if (dist > radius) return false;
@@ -166,17 +267,22 @@ export const GigProvider = ({ children }) => {
     filtered.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
 
     return filtered;
-  }, [gigs, location, radius]);
+  }, [gigs, location, radius, isGigExpired]);
 
   // Get gig by ID
   const getGigById = useCallback((id) => {
     const gig = gigs.find(g => g.id === id);
     if (!gig) return null;
+
+    const expired = isGigExpired(gig);
+    const computedStatus = (gig.status === 'active' && expired) ? 'expired' : gig.status;
+
     return {
       ...gig,
+      status: computedStatus,
       distance: calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng),
     };
-  }, [gigs, location]);
+  }, [gigs, location, isGigExpired]);
 
   // Post a new gig
   const postGig = useCallback(async (gigData) => {
@@ -184,22 +290,33 @@ export const GigProvider = ({ children }) => {
     const newGig = {
       ...gigData,
       id: localId,
-      postedBy: user?.id || 'user-1',
+      postedBy: user?.id || 'user-current',
       postedAt: new Date().toISOString(),
       status: 'active',
       acceptedBy: null,
       currency: '₹',
+      contactDetails: gigData.contactDetails || {
+        phone: user?.phone || '',
+        email: user?.email || '',
+        whatsapp: true,
+        allowCall: true,
+      },
+      attachments: gigData.attachments || [],
+      expiryDate: gigData.expiryDate || null,
+      maxApplications: gigData.maxApplications ? Number(gigData.maxApplications) : 5,
+      requests: [],
     };
 
     // Update local state immediately for instant response
     setGigs(prev => [newGig, ...prev]);
-    showToast('Work requirement posted successfully!', 'success');
+    showToast('Work requirement published successfully!', 'success');
 
     // Attempt to write to Supabase table
     try {
-      const { data, error } = await supabase
+      await supabase
         .from('gigs')
         .insert([{
+          id: localId,
           title: gigData.title,
           description: gigData.description,
           category: gigData.category,
@@ -208,16 +325,14 @@ export const GigProvider = ({ children }) => {
           date: gigData.date || new Date().toISOString(),
           duration: gigData.duration || 'Flexible',
           location: gigData.location,
+          contact_details: newGig.contactDetails,
+          attachments: newGig.attachments,
+          expiry_date: newGig.expiryDate,
+          max_applications: newGig.maxApplications,
           posted_by: user?.id || null,
           status: 'active',
-        }])
-        .select()
-        .single();
-
-      if (!error && data) {
-        // Swap local id with server id
-        setGigs(prev => prev.map(g => g.id === localId ? { ...g, id: data.id } : g));
-      }
+          requests: [],
+        }]);
     } catch (err) {
       console.info('Saved locally. Supabase insert info:', err.message);
     }
@@ -225,29 +340,121 @@ export const GigProvider = ({ children }) => {
     return newGig;
   }, [user, showToast]);
 
-  // Accept a gig
-  const acceptGig = useCallback(async (gigId) => {
+  // Send a booking request (Worker applies for gig)
+  const applyForGig = useCallback(async (gigId, message = '') => {
     if (!user) {
-      showToast('Please login to accept work requirements', 'error');
+      showToast('Please login to send a work request', 'error');
       return false;
     }
 
-    // Update local state immediately
-    setGigs(prev => prev.map(g =>
-      g.id === gigId ? { ...g, acceptedBy: user.id, status: 'booked' } : g
-    ));
-    showToast('Work accepted! Contact the poster.', 'success');
+    const currentGig = gigs.find(g => g.id === gigId);
+    if (!currentGig) return false;
 
-    // Attempt update on Supabase
-    try {
-      await supabase
-        .from('gigs')
-        .update({ accepted_by: user.id, status: 'booked' })
-        .eq('id', gigId);
-    } catch { /* fallback to local */ }
+    if (isGigExpired(currentGig)) {
+      showToast('This work requirement has expired or reached application limit', 'error');
+      return false;
+    }
 
+    // Check if worker already applied
+    const existingReq = (currentGig.requests || []).find(r => r.workerId === user.id);
+    if (existingReq) {
+      showToast('You have already applied for this work!', 'info');
+      return false;
+    }
+
+    const requestId = generateId();
+    const newRequest = {
+      id: requestId,
+      workerId: user.id,
+      workerName: user.name || 'Applicant Worker',
+      workerPhone: user.phone || '',
+      workerEmail: user.email || '',
+      message: message || 'Hi, I am interested in doing this work!',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      messages: message ? [
+        {
+          id: generateId(),
+          senderId: user.id,
+          senderName: user.name || 'Applicant Worker',
+          text: message,
+          timestamp: new Date().toISOString(),
+        }
+      ] : [],
+    };
+
+    setGigs(prev => prev.map(g => {
+      if (g.id !== gigId) return g;
+      const updatedRequests = [...(g.requests || []), newRequest];
+      const reachedMax = g.maxApplications && updatedRequests.filter(r => r.status !== 'rejected').length >= g.maxApplications;
+      return {
+        ...g,
+        requests: updatedRequests,
+        status: reachedMax ? 'expired' : g.status,
+      };
+    }));
+
+    showToast('Work request sent to publisher! Waiting for approval.', 'success');
     return true;
-  }, [user, showToast]);
+  }, [user, gigs, isGigExpired, showToast]);
+
+  // Respond to request (Publisher approves or rejects worker request)
+  const respondToRequest = useCallback(async (gigId, requestId, status) => {
+    setGigs(prev => prev.map(g => {
+      if (g.id !== gigId) return g;
+      const targetReq = (g.requests || []).find(r => r.id === requestId);
+      const updatedRequests = (g.requests || []).map(r =>
+        r.id === requestId ? { ...r, status } : r
+      );
+
+      if (status === 'approved' && targetReq) {
+        return {
+          ...g,
+          requests: updatedRequests,
+          acceptedBy: targetReq.workerId,
+          status: 'booked',
+        };
+      }
+
+      return {
+        ...g,
+        requests: updatedRequests,
+      };
+    }));
+
+    if (status === 'approved') {
+      showToast('Applicant request approved! Booking confirmed.', 'success');
+    } else {
+      showToast('Application request rejected.', 'info');
+    }
+  }, [showToast]);
+
+  // Send a chat message on a request thread
+  const sendChatMessage = useCallback((gigId, requestId, text) => {
+    if (!user || !text.trim()) return;
+
+    setGigs(prev => prev.map(g => {
+      if (g.id !== gigId) return g;
+      const updatedRequests = (g.requests || []).map(r => {
+        if (r.id !== requestId) return r;
+        const newMsg = {
+          id: generateId(),
+          senderId: user.id,
+          senderName: user.name || 'User',
+          text: text.trim(),
+          timestamp: new Date().toISOString(),
+        };
+        return {
+          ...r,
+          messages: [...(r.messages || []), newMsg],
+        };
+      });
+      return {
+        ...g,
+        requests: updatedRequests,
+      };
+    }));
+  }, [user]);
 
   // Cancel a gig
   const cancelGig = useCallback(async (gigId) => {
@@ -255,13 +462,6 @@ export const GigProvider = ({ children }) => {
       g.id === gigId ? { ...g, status: 'cancelled' } : g
     ));
     showToast('Work requirement cancelled', 'info');
-
-    try {
-      await supabase
-        .from('gigs')
-        .update({ status: 'cancelled' })
-        .eq('id', gigId);
-    } catch { /* fallback to local */ }
   }, [showToast]);
 
   // Complete a gig
@@ -270,13 +470,6 @@ export const GigProvider = ({ children }) => {
       g.id === gigId ? { ...g, status: 'completed' } : g
     ));
     showToast('Work marked as completed!', 'success');
-
-    try {
-      await supabase
-        .from('gigs')
-        .update({ status: 'completed' })
-        .eq('id', gigId);
-    } catch { /* fallback to local */ }
   }, [showToast]);
 
   // Get user's posted gigs
@@ -285,10 +478,13 @@ export const GigProvider = ({ children }) => {
     return gigs.filter(g => g.postedBy === user.id).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
   }, [gigs, user]);
 
-  // Get user's accepted/booked gigs
+  // Get user's booked or applied gigs
   const getMyBookedGigs = useCallback(() => {
     if (!user) return [];
-    return gigs.filter(g => g.acceptedBy === user.id).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+    return gigs.filter(g =>
+      g.acceptedBy === user.id ||
+      (g.requests || []).some(r => r.workerId === user.id)
+    ).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
   }, [gigs, user]);
 
   return (
@@ -300,8 +496,11 @@ export const GigProvider = ({ children }) => {
       getUserById,
       getNearbyGigs,
       getGigById,
+      isGigExpired,
       postGig,
-      acceptGig,
+      applyForGig,
+      respondToRequest,
+      sendChatMessage,
       cancelGig,
       completeGig,
       getMyPostedGigs,
