@@ -1,0 +1,110 @@
+.chats-page {
+  padding: var(--space-6);
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: calc(100vh - var(--navbar-height) - var(--bottomnav-height));
+}
+
+.chats-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.chats-header h1 {
+  font-size: var(--fs-2xl);
+}
+
+.chats-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.chat-thread-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  cursor: pointer;
+  border-radius: var(--radius-xl);
+  transition: all var(--transition-base);
+}
+
+.chat-thread-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-color-hover);
+  transform: translateY(-2px);
+}
+
+.chat-thread-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow: hidden;
+}
+
+.chat-thread-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.thread-user-name {
+  font-size: var(--fs-base);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.thread-time {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.thread-gig-title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--primary-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-last-msg {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.thread-arrow {
+  display: flex;
+  align-items: center;
+}
+
+.chats-empty {
+  margin: auto;
+  text-align: center;
+  padding: var(--space-12) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chats-empty .empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-2);
+}
+
+.chats-guest {
+  margin: auto;
+  text-align: center;
+  padding: var(--space-12) var(--space-4);
+}

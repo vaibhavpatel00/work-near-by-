@@ -13,6 +13,7 @@ import PostGig from './pages/PostGig/PostGig';
 import GigDetail from './pages/GigDetail/GigDetail';
 import Profile from './pages/Profile/Profile';
 import History from './pages/History/History';
+import Chats from './pages/Chats/Chats';
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
 
@@ -32,6 +33,7 @@ function App() {
                 <Route path="/gig/:id" element={<GigDetail />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/history" element={<History />} />
+                <Route path="/chats" element={<Chats />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
               </Routes>

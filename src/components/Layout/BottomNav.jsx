@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Compass, PlusCircle, Clock, User } from 'lucide-react';
+import { Home, Compass, PlusCircle, Clock, MessageSquare, User } from 'lucide-react';
 import './BottomNav.css';
 
 const BottomNav = () => {
@@ -8,6 +8,7 @@ const BottomNav = () => {
     { to: '/explore', icon: Compass, label: 'Explore' },
     { to: '/post', icon: PlusCircle, label: 'Post', isCenter: true },
     { to: '/history', icon: Clock, label: 'History' },
+    { to: '/chats', icon: MessageSquare, label: 'Chats' },
     { to: '/profile', icon: User, label: 'Profile' },
   ];
 

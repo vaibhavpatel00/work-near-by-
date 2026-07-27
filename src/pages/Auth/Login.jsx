@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, LogIn, KeyRound } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, KeyRound, RotateCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Auth.css';
 
@@ -14,9 +14,23 @@ const Login = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(30);
+  const [canResend, setCanResend] = useState(false);
 
   const { login, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let interval = null;
+    if (step === 'verify' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    } else if (resendTimer === 0) {
+      setCanResend(true);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [step, resendTimer]);
 
   const formatErr = (err, defaultMsg) => {
     if (!err) return defaultMsg;
@@ -50,10 +64,28 @@ const Login = () => {
       await sendOtp(email);
       setMessage(`OTP sent to ${email}. Check your inbox!`);
       setStep('verify');
+      setResendTimer(30);
+      setCanResend(false);
     } catch (err) {
       console.error('Send OTP Error:', err);
       setError(formatErr(err, 'Failed to send OTP. Check Supabase Auth settings.'));
     } finally { setLoading(false); }
+  };
+
+  const handleResendOtpClick = async () => {
+    if (!email) return;
+    setError(''); setMessage('');
+    setLoading(true);
+    try {
+      await sendOtp(email);
+      setMessage(`Fresh OTP code sent to ${email}!`);
+      setResendTimer(30);
+      setCanResend(false);
+    } catch (err) {
+      setError(formatErr(err, 'Failed to resend OTP code'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleVerifyOtp = async (e) => {
@@ -152,8 +184,21 @@ const Login = () => {
                   {loading ? 'Verifying...' : 'Verify & Sign In'}
                 </button>
 
-                <button type="button" className="btn btn-ghost btn-block" onClick={() => setStep('request')}>
-                  ← Change Email / Resend
+                {/* Resend OTP section */}
+                <div className="resend-otp-container mt-3 text-center">
+                  {canResend ? (
+                    <button type="button" className="btn btn-outline btn-block" onClick={handleResendOtpClick} disabled={loading}>
+                      <RotateCw size={14} /> Resend OTP Code
+                    </button>
+                  ) : (
+                    <p className="text-xs text-tertiary">
+                      Resend OTP in <strong>{resendTimer}s</strong>
+                    </p>
+                  )}
+                </div>
+
+                <button type="button" className="btn btn-ghost btn-block mt-2" onClick={() => setStep('request')}>
+                  ← Change Email Address
                 </button>
               </form>
             )}

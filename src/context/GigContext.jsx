@@ -345,6 +345,24 @@ export const GigProvider = ({ children }) => {
       return false;
     }
 
+    // Malpractice protection check: Worker cannot book multiple jobs at the same date & time
+    const targetDateStr = new Date(currentGig.date).toDateString();
+    const hasConflict = gigs.some(otherGig => {
+      if (String(otherGig.id) === String(gigId)) return false;
+      const otherDateStr = new Date(otherGig.date).toDateString();
+      if (otherDateStr !== targetDateStr) return false;
+
+      const userReqOnOther = (otherGig.requests || []).find(r => String(r.workerId) === String(user.id) && r.status !== 'rejected');
+      const isUserAcceptedOnOther = String(otherGig.acceptedBy) === String(user.id);
+
+      return isUserAcceptedOnOther || !!userReqOnOther;
+    });
+
+    if (hasConflict) {
+      showToast('⚠️ Malpractice Protection: You already have a booking scheduled for this date & time!', 'error');
+      return false;
+    }
+
     const requestId = generateId();
     const newRequest = {
       id: requestId,
