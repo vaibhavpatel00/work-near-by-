@@ -555,6 +555,16 @@ export const GigProvider = ({ children }) => {
     } catch { /* fallback */ }
   }, [showToast]);
 
+  // Delete a gig (Owner action)
+  const deleteGig = useCallback(async (gigId) => {
+    setGigs(prev => prev.filter(g => String(g.id) !== String(gigId)));
+    showToast('Work requirement deleted successfully', 'info');
+
+    try {
+      await supabase.from('gigs').delete().eq('id', gigId);
+    } catch { /* fallback */ }
+  }, [showToast]);
+
   // Get user's posted gigs
   const getMyPostedGigs = useCallback(() => {
     if (!user) return [];
@@ -586,6 +596,7 @@ export const GigProvider = ({ children }) => {
       sendChatMessage,
       cancelGig,
       completeGig,
+      deleteGig,
       getMyPostedGigs,
       getMyBookedGigs,
     }}>

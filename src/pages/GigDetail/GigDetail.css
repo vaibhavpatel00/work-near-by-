@@ -7,11 +7,22 @@
   gap: var(--space-4);
 }
 
-.detail-topbar {
+.topbar-right-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-2);
 }
+
+.bg-error {
+  background: var(--error-500) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.bg-error:hover {
+  background: var(--error-600) !important;
+}
+
 
 .detail-category-badge {
   display: inline-flex;

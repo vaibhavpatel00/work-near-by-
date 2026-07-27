@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, MapPin, Clock, Calendar, IndianRupee, Phone, CheckCircle, 
   AlertTriangle, Mail, MessageSquare, Hourglass, Users, Paperclip, Image as ImageIcon,
-  Send, ExternalLink, ShieldCheck, Check, X
+  Send, ExternalLink, ShieldCheck, Check, X, Trash2
 } from 'lucide-react';
 import { useGigs } from '../../context/GigContext';
 import { useAuth } from '../../context/AuthContext';
@@ -17,12 +17,13 @@ const GigDetail = () => {
   const navigate = useNavigate();
   const { 
     getGigById, getUserById, applyForGig, respondToRequest, 
-    sendChatMessage, completeGig, cancelGig, isGigExpired 
+    sendChatMessage, completeGig, cancelGig, deleteGig, isGigExpired 
   } = useGigs();
   const { user } = useAuth();
 
   const [requestNote, setRequestNote] = useState('');
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeChatRequest, setActiveChatRequest] = useState(null); // active request object for ChatDrawer
 
   const gig = getGigById(id);
@@ -67,6 +68,11 @@ const GigDetail = () => {
     sendChatMessage(gig.id, activeChatRequest.id, text);
   };
 
+  const handleDeleteGig = () => {
+    deleteGig(gig.id);
+    navigate('/');
+  };
+
   // Keep active chat request sync with state
   const updatedActiveChatReq = activeChatRequest 
     ? (gig.requests || []).find(r => r.id === activeChatRequest.id) || activeChatRequest
@@ -88,9 +94,20 @@ const GigDetail = () => {
             <ArrowLeft size={18} />
             Back
           </button>
-          <div className={`detail-category-badge ${category?.cssClass}`}>
-            {CategoryIcon && <CategoryIcon size={14} />}
-            <span>{category?.name || gig.category}</span>
+          <div className="topbar-right-actions">
+            {isOwner && (
+              <button 
+                className="btn btn-ghost btn-sm text-error" 
+                onClick={() => setShowDeleteModal(true)}
+                title="Delete Post"
+              >
+                <Trash2 size={16} /> Delete
+              </button>
+            )}
+            <div className={`detail-category-badge ${category?.cssClass}`}>
+              {CategoryIcon && <CategoryIcon size={14} />}
+              <span>{category?.name || gig.category}</span>
+            </div>
           </div>
         </div>
 
@@ -117,7 +134,7 @@ const GigDetail = () => {
           </div>
         </section>
 
-        {/* 2. Publisher Contact Details Section (Added right after Amount Section) */}
+        {/* Publisher Contact Details Section */}
         <section className="detail-section publisher-contact-card glass-card animate-fade-in-up">
           <h3><Phone size={18} className="text-accent" /> Publisher Contact Details</h3>
           <p className="text-xs text-secondary mb-3">
@@ -162,7 +179,7 @@ const GigDetail = () => {
           </div>
         </section>
 
-        {/* Quick Info Grid (Timing, Location, Expiry & Max Applications) */}
+        {/* Quick Info Grid */}
         <section className="detail-info-grid stagger-children">
           <div className="info-card glass-card">
             <Calendar size={18} className="info-icon text-accent" />
@@ -190,7 +207,7 @@ const GigDetail = () => {
             </div>
           </div>
 
-          {/* 4. Expiry & Applications Stats Card */}
+          {/* Expiry & Applications Stats Card */}
           <div className="info-card glass-card highlight-card">
             <Hourglass size={18} className="info-icon text-warning" />
             <div>
@@ -202,7 +219,7 @@ const GigDetail = () => {
           </div>
         </section>
 
-        {/* 1. Description & Published Images/Documents Section */}
+        {/* Description & Published Images/Documents Section */}
         <section className="detail-section glass-card animate-fade-in-up">
           <h3>Requirement Description</h3>
           <p className="detail-desc">{gig.description}</p>
@@ -255,7 +272,7 @@ const GigDetail = () => {
           </div>
         </section>
 
-        {/* 3. Received Applications Section (For Publisher / Job Poster) */}
+        {/* Received Applications Section (For Publisher) */}
         {isOwner && (
           <section className="detail-section applicants-section glass-card animate-fade-in-up">
             <h3><Users size={18} className="text-accent" /> Received Applications ({(gig.requests || []).length})</h3>
@@ -285,7 +302,7 @@ const GigDetail = () => {
                         </div>
                       </div>
 
-                      {/* 5. In-App Direct Chat Button for Publisher */}
+                      {/* In-App Direct Chat Button for Publisher */}
                       <button
                         className="btn btn-outline btn-sm chat-open-btn"
                         onClick={() => setActiveChatRequest(req)}
@@ -321,7 +338,7 @@ const GigDetail = () => {
           </section>
         )}
 
-        {/* 3 & 5. Worker Application Status Card (For Worker) */}
+        {/* Worker Application Status Card */}
         {!isOwner && myRequest && (
           <section className="detail-section my-request-card glass-card animate-fade-in-up">
             <h3><ShieldCheck size={18} className="text-success" /> Your Booking Request</h3>
@@ -382,6 +399,26 @@ const GigDetail = () => {
           </div>
         )}
 
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="apply-modal-overlay animate-fade-in">
+            <div className="apply-modal glass-card animate-fade-in-up">
+              <h3 className="text-error"><Trash2 size={20} className="inline-icon" /> Delete Work Requirement?</h3>
+              <p className="text-xs text-secondary mt-2 mb-4">
+                Are you sure you want to permanently delete <strong>"{gig.title}"</strong>? This will remove the post for all users.
+              </p>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowDeleteModal(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-outline text-error" onClick={handleDeleteGig}>
+                  <Trash2 size={16} /> Delete Permanently
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer Actions */}
         <div className="detail-action-bar">
           {gig.status === 'active' && !isOwner && !myRequest && !expired && (
@@ -391,15 +428,23 @@ const GigDetail = () => {
             </button>
           )}
 
-          {gig.status === 'active' && isOwner && (
-            <button className="btn btn-outline btn-block text-error" onClick={() => cancelGig(gig.id)}>
-              <AlertTriangle size={18} />
-              Cancel Work Requirement
-            </button>
+          {isOwner && (
+            <div className="owner-action-buttons">
+              {gig.status === 'active' && (
+                <button className="btn btn-outline btn-block text-error" onClick={() => cancelGig(gig.id)}>
+                  <AlertTriangle size={18} />
+                  Cancel Work Requirement
+                </button>
+              )}
+              <button className="btn btn-outline btn-block text-error mt-2" onClick={() => setShowDeleteModal(true)}>
+                <Trash2 size={18} />
+                Delete Work Requirement
+              </button>
+            </div>
           )}
 
           {gig.status === 'booked' && (isOwner || isBookedByMe) && (
-            <button className="btn btn-accent btn-lg btn-block" onClick={() => completeGig(gig.id)}>
+            <button className="btn btn-accent btn-lg btn-block mt-2" onClick={() => completeGig(gig.id)}>
               <CheckCircle size={20} />
               Mark Work as Completed
             </button>
