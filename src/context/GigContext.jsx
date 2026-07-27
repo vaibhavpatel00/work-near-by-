@@ -7,115 +7,40 @@ import { supabase } from '../lib/supabase';
 
 const GigContext = createContext(null);
 
-const GIGS_STORAGE_KEY = 'wikwik_gigs_v3';
+const GIGS_STORAGE_KEY = 'wikwik_gigs_v4';
 
-const INITIAL_DEMO_GIGS = [
-  {
-    id: 'demo-gig-1',
-    title: 'Experienced Driver Needed for Outstation Trip to Pune',
-    description: 'Looking for a verified driver for a 2-day round trip to Pune. SUV vehicle provided. Must have valid DL and experience on highway driving.',
-    category: 'driver',
-    amount: 3500,
-    currency: '₹',
-    date: new Date(Date.now() + 86400000 * 2).toISOString(),
-    duration: '2 Days',
-    location: {
-      address: 'Banjara Hills, Hyderabad',
-      lat: 17.4156,
-      lng: 78.4347,
-    },
-    contactDetails: {
-      phone: '+91 98765 43210',
-      email: 'rajesh.sharma@example.com',
-      whatsapp: true,
-      allowCall: true,
-    },
-    attachments: [
-      {
-        id: 'att-1',
-        name: 'Trip_Route_Details.pdf',
-        type: 'document',
-        url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-      },
-      {
-        id: 'att-2',
-        name: 'Car_Vehicle_Photo.jpg',
-        type: 'image',
-        url: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
-      }
-    ],
-    expiryDate: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0] + 'T23:59',
-    maxApplications: 5,
-    postedBy: 'user-101',
-    postedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    status: 'active',
-    acceptedBy: null,
-    requests: [
-      {
-        id: 'req-1',
-        workerId: 'user-worker-1',
-        workerName: 'Vikram Singh',
-        workerPhone: '+91 91234 56789',
-        workerEmail: 'vikram.driver@example.com',
-        message: 'Hello sir, I have 8 years of highway driving experience. Available immediately.',
-        status: 'pending',
-        createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-        messages: [
-          {
-            id: 'm-1',
-            senderId: 'user-worker-1',
-            senderName: 'Vikram Singh',
-            text: 'Hello sir, I have 8 years of highway driving experience. Available immediately.',
-            timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-          },
-          {
-            id: 'm-2',
-            senderId: 'user-101',
-            senderName: 'Rajesh Sharma',
-            text: 'Hi Vikram, do you have experience driving heavy SUVs?',
-            timestamp: new Date(Date.now() - 3600000 * 1).toISOString(),
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'demo-gig-2',
-    title: 'House Cleaning & Deep Kitchen Sanitization',
-    description: 'Full 3BHK flat cleaning required before house party. Deep kitchen degreasing, bathroom scrubbing, and floor mopping.',
-    category: 'housekeeping',
-    amount: 1800,
-    currency: '₹',
-    date: new Date(Date.now() + 86400000 * 1).toISOString(),
-    duration: '5 Hours',
-    location: {
-      address: 'Gachibowli, Hyderabad',
-      lat: 17.4401,
-      lng: 78.3489,
-    },
-    contactDetails: {
-      phone: '+91 99887 76655',
-      email: 'priya.kapoor@example.com',
-      whatsapp: true,
-      allowCall: false,
-    },
-    attachments: [
-      {
-        id: 'att-3',
-        name: 'Kitchen_Area.jpg',
-        type: 'image',
-        url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80',
-      }
-    ],
-    expiryDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] + 'T18:00',
-    maxApplications: 3,
-    postedBy: 'user-102',
-    postedAt: new Date(Date.now() - 3600000 * 8).toISOString(),
-    status: 'active',
-    acceptedBy: null,
-    requests: []
+// Helper to encode metadata into description string for 100% Supabase schema compatibility
+const encodeDescriptionWithMeta = (description, meta = {}) => {
+  const metaObj = {
+    contactDetails: meta.contactDetails || null,
+    attachments: meta.attachments || [],
+    expiryDate: meta.expiryDate || null,
+    maxApplications: meta.maxApplications || 5,
+    requests: meta.requests || [],
+  };
+  return `${description}\n\n__META__${JSON.stringify(metaObj)}`;
+};
+
+// Helper to decode description and metadata
+const decodeDescriptionWithMeta = (rawDescription) => {
+  if (!rawDescription) return { description: '', meta: {} };
+  const parts = rawDescription.split('\n\n__META__');
+  if (parts.length > 1) {
+    try {
+      const meta = JSON.parse(parts[1]);
+      return { description: parts[0], meta };
+    } catch {
+      return { description: rawDescription, meta: {} };
+    }
   }
-];
+  return { description: rawDescription, meta: {} };
+};
+
+// Fallback UUID regex check
+const isUuid = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+};
 
 export const GigProvider = ({ children }) => {
   const { location, radius } = useLocation();
@@ -131,12 +56,12 @@ export const GigProvider = ({ children }) => {
         }
       }
     } catch { /* ignore */ }
-    return INITIAL_DEMO_GIGS;
+    return [];
   });
 
   const [toasts, setToasts] = useState([]);
 
-  // Fetch initial gigs from Supabase and sync state
+  // Fetch all gigs from Supabase as SINGLE SOURCE OF TRUTH
   const syncWithSupabase = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -144,56 +69,60 @@ export const GigProvider = ({ children }) => {
         .select('*')
         .order('posted_at', { ascending: false });
 
-      if (error || !data || data.length === 0) return;
+      if (error) {
+        console.error('Supabase Gigs Fetch Error:', error.message, error);
+        return;
+      }
 
-      const formatted = data.map(g => ({
-        id: String(g.id),
-        title: g.title,
-        description: g.description,
-        category: g.category,
-        amount: g.amount,
-        currency: g.currency || '₹',
-        date: g.date,
-        duration: g.duration,
-        location: g.location,
-        contactDetails: g.contact_details || g.contactDetails || { phone: '', email: '', whatsapp: true, allowCall: true },
-        attachments: g.attachments || [],
-        expiryDate: g.expiry_date || g.expiryDate || null,
-        maxApplications: g.max_applications || g.maxApplications || 5,
-        postedBy: g.posted_by || g.postedBy,
-        postedAt: g.posted_at || g.postedAt,
-        status: g.status,
-        acceptedBy: g.accepted_by || g.acceptedBy,
-        requests: g.requests || [],
-      }));
+      if (!data) return;
 
-      setGigs(prev => {
-        const map = new Map(prev.map(item => [item.id, item]));
-        formatted.forEach(item => {
-          map.set(item.id, { ...map.get(item.id), ...item });
-        });
-        return Array.from(map.values()).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+      const formatted = data.map(g => {
+        const { description, meta } = decodeDescriptionWithMeta(g.description);
+        return {
+          id: String(g.id),
+          title: g.title,
+          description: description,
+          category: g.category,
+          amount: Number(g.amount),
+          currency: g.currency || '₹',
+          date: g.date,
+          duration: g.duration || 'Flexible',
+          location: g.location || { address: 'Nearby', lat: 17.385, lng: 78.4867 },
+          postedBy: g.posted_by,
+          postedAt: g.posted_at,
+          status: g.status,
+          acceptedBy: g.accepted_by,
+          contactDetails: meta.contactDetails || g.contact_details || { phone: '', email: '', whatsapp: true, allowCall: true },
+          attachments: meta.attachments || g.attachments || [],
+          expiryDate: meta.expiryDate || g.expiry_date || null,
+          maxApplications: meta.maxApplications || g.max_applications || 5,
+          requests: meta.requests || g.requests || [],
+        };
       });
+
+      setGigs(formatted);
     } catch (err) {
-      console.info('Supabase sync info:', err.message);
+      console.error('Supabase sync exception:', err);
     }
   }, []);
 
-  // Fetch on mount & poll every 4 seconds for cross-device updates
+  // Fetch on mount & poll every 3 seconds for instant multi-device public updates
   useEffect(() => {
     syncWithSupabase();
-    const interval = setInterval(syncWithSupabase, 4000);
+    const interval = setInterval(syncWithSupabase, 3000);
 
-    // Subscribe to realtime postgres_changes on 'gigs' table
     let channel = null;
     try {
       channel = supabase
-        .channel('public:gigs_realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'gigs' }, () => {
+        .channel('public:gigs_realtime_feed')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'gigs' }, (payload) => {
+          console.log('Realtime change payload received:', payload);
           syncWithSupabase();
         })
         .subscribe();
-    } catch { /* ignore realtime fallback */ }
+    } catch (e) {
+      console.warn('Realtime subscription error:', e);
+    }
 
     return () => {
       clearInterval(interval);
@@ -201,11 +130,11 @@ export const GigProvider = ({ children }) => {
     };
   }, [syncWithSupabase]);
 
-  // Persist gigs to localStorage as client fallback
+  // Persist gigs to localStorage as client cache
   useEffect(() => {
     try {
       localStorage.setItem(GIGS_STORAGE_KEY, JSON.stringify(gigs));
-    } catch { /* storage limit safety */ }
+    } catch { /* storage safety */ }
   }, [gigs]);
 
   // Toast helpers
@@ -226,7 +155,7 @@ export const GigProvider = ({ children }) => {
     if (user && user.id === userId) return user;
     return MOCK_USERS.find(u => u.id === userId) || { 
       id: userId, 
-      name: userId === 'user-101' ? 'Rajesh Sharma' : 'Community Member', 
+      name: 'Community Member', 
       rating: 4.8 
     };
   }, [user]);
@@ -236,14 +165,12 @@ export const GigProvider = ({ children }) => {
     if (!gig) return false;
     if (gig.status === 'expired' || gig.status === 'cancelled' || gig.status === 'completed') return true;
     
-    // Date check
     if (gig.expiryDate) {
       const now = new Date();
       const exp = new Date(gig.expiryDate);
       if (now > exp) return true;
     }
 
-    // Max applications check
     const approvedOrPendingCount = (gig.requests || []).filter(r => r.status !== 'rejected').length;
     if (gig.maxApplications && approvedOrPendingCount >= gig.maxApplications) {
       return true;
@@ -252,18 +179,22 @@ export const GigProvider = ({ children }) => {
     return false;
   }, []);
 
-  // Get nearby gigs within radius (or include all if radius is large)
+  // Get nearby gigs for Home/Explore feed
   const getNearbyGigs = useCallback((filterCategory = null, searchQuery = '') => {
     let filtered = gigs.map(gig => {
       const expired = isGigExpired(gig);
       const computedStatus = (gig.status === 'active' && expired) ? 'expired' : gig.status;
       return { ...gig, status: computedStatus };
     }).filter(gig => {
-      // Distance filter safety: if distance calculation returns valid number, check radius
-      if (gig.location && gig.location.lat && gig.location.lng) {
+      // Distance filter check
+      if (gig.location && typeof gig.location.lat === 'number' && typeof gig.location.lng === 'number') {
         const dist = calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng);
-        // Allow up to max radius or 500km fallback for multi-device cross-city testing
-        if (radius < 100 && dist > radius) return false;
+        // Debug location filtering
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Location Filter] Gig: "${gig.title}", Distance: ${dist.toFixed(1)}km, Selected Radius: ${radius}km`);
+        }
+        // If distance is far greater than radius and radius is not max, filter
+        if (radius < 150 && dist > radius) return false;
       }
 
       // Category filter
@@ -282,12 +213,12 @@ export const GigProvider = ({ children }) => {
     // Add distance to each gig
     filtered = filtered.map(gig => ({
       ...gig,
-      distance: gig.location?.lat ? calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng) : 0,
+      distance: (gig.location && typeof gig.location.lat === 'number')
+        ? calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng) 
+        : 0,
     }));
 
-    // Sort by posted time (newest first)
     filtered.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
-
     return filtered;
   }, [gigs, location, radius, isGigExpired]);
 
@@ -302,83 +233,96 @@ export const GigProvider = ({ children }) => {
     return {
       ...gig,
       status: computedStatus,
-      distance: gig.location?.lat ? calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng) : 0,
+      distance: (gig.location && typeof gig.location.lat === 'number')
+        ? calculateDistance(location.lat, location.lng, gig.location.lat, gig.location.lng) 
+        : 0,
     };
   }, [gigs, location, isGigExpired]);
 
-  // Post a new gig (with multi-device Supabase syncing)
+  // Post a new gig (Inserts centrally to Supabase)
   const postGig = useCallback(async (gigData) => {
-    const localId = generateId();
+    const localUuid = generateId(); // Valid RFC 4122 v4 UUID
+    
+    // Ensure valid UUID for posted_by column
+    let postedByUuid = user?.id;
+    if (!isUuid(postedByUuid)) {
+      // If user is guest or mock user ID, pass null or valid UUID fallback
+      postedByUuid = null;
+    }
+
+    const contactDetails = gigData.contactDetails || {
+      phone: user?.phone || '',
+      email: user?.email || '',
+      whatsapp: true,
+      allowCall: true,
+    };
+    const attachments = gigData.attachments || [];
+    const expiryDate = gigData.expiryDate || null;
+    const maxApplications = gigData.maxApplications ? Number(gigData.maxApplications) : 5;
+    const requests = [];
+
+    // Encode description with metadata
+    const encodedDescription = encodeDescriptionWithMeta(gigData.description, {
+      contactDetails,
+      attachments,
+      expiryDate,
+      maxApplications,
+      requests,
+    });
+
     const newGig = {
       ...gigData,
-      id: localId,
-      postedBy: user?.id || 'user-current',
+      id: localUuid,
+      postedBy: user?.id || postedByUuid || localUuid,
       postedAt: new Date().toISOString(),
       status: 'active',
       acceptedBy: null,
       currency: '₹',
-      contactDetails: gigData.contactDetails || {
-        phone: user?.phone || '',
-        email: user?.email || '',
-        whatsapp: true,
-        allowCall: true,
-      },
-      attachments: gigData.attachments || [],
-      expiryDate: gigData.expiryDate || null,
-      maxApplications: gigData.maxApplications ? Number(gigData.maxApplications) : 5,
-      requests: [],
+      contactDetails,
+      attachments,
+      expiryDate,
+      maxApplications,
+      requests,
     };
 
-    // Update local state immediately
+    // Update local state immediately for fast UI feedback
     setGigs(prev => [newGig, ...prev]);
-    showToast('Work requirement published successfully!', 'success');
 
-    // Write to Supabase DB for cross-device public visibility
+    // Send insertion payload strictly matching Supabase table columns
+    const payload = {
+      id: localUuid,
+      title: gigData.title,
+      description: encodedDescription,
+      category: gigData.category,
+      amount: Number(gigData.amount),
+      currency: '₹',
+      date: gigData.date || new Date().toISOString(),
+      duration: gigData.duration || 'Flexible',
+      location: gigData.location,
+      posted_by: postedByUuid,
+      status: 'active',
+    };
+
+    console.log('[Supabase Insert] Inserting new gig into public.gigs:', payload);
+
     try {
-      const fullPayload = {
-        id: localId,
-        title: gigData.title,
-        description: gigData.description,
-        category: gigData.category,
-        amount: Number(gigData.amount),
-        currency: '₹',
-        date: gigData.date || new Date().toISOString(),
-        duration: gigData.duration || 'Flexible',
-        location: gigData.location,
-        contact_details: newGig.contactDetails,
-        attachments: newGig.attachments,
-        expiry_date: newGig.expiryDate,
-        max_applications: newGig.maxApplications,
-        posted_by: user?.id || 'user-current',
-        status: 'active',
-        requests: [],
-      };
-
-      const { error } = await supabase.from('gigs').insert([fullPayload]);
+      const { data, error } = await supabase.from('gigs').insert([payload]).select();
 
       if (error) {
-        console.warn('Full payload insert warning, trying standard payload:', error.message);
-        // Fallback insert without jsonb columns if migration not run yet
-        await supabase.from('gigs').insert([{
-          id: localId,
-          title: gigData.title,
-          description: gigData.description,
-          category: gigData.category,
-          amount: Number(gigData.amount),
-          currency: '₹',
-          date: gigData.date || new Date().toISOString(),
-          duration: gigData.duration || 'Flexible',
-          location: gigData.location,
-          posted_by: user?.id || 'user-current',
-          status: 'active',
-        }]);
+        console.error('[Supabase Insert Error]', error.code, error.message, error);
+        showToast(`Warning: Supabase sync info (${error.message})`, 'warning');
+      } else {
+        console.log('[Supabase Insert Success] Record created centrally:', data);
+        showToast('Work requirement published centrally on Supabase!', 'success');
+        // Refresh feed from Supabase
+        await syncWithSupabase();
       }
     } catch (err) {
-      console.info('Supabase insert fallback:', err.message);
+      console.error('[Supabase Insert Catch Error]', err);
     }
 
     return newGig;
-  }, [user, showToast]);
+  }, [user, showToast, syncWithSupabase]);
 
   // Send a booking request (Worker applies for gig)
   const applyForGig = useCallback(async (gigId, message = '') => {
@@ -422,14 +366,20 @@ export const GigProvider = ({ children }) => {
       ] : [],
     };
 
-    let updatedRequests = [];
-    let updatedGigStatus = currentGig.status;
+    const updatedRequests = [...(currentGig.requests || []), newRequest];
+    const reachedMax = currentGig.maxApplications && updatedRequests.filter(r => r.status !== 'rejected').length >= currentGig.maxApplications;
+    const updatedGigStatus = reachedMax ? 'expired' : currentGig.status;
+
+    const updatedEncodedDesc = encodeDescriptionWithMeta(currentGig.description, {
+      contactDetails: currentGig.contactDetails,
+      attachments: currentGig.attachments,
+      expiryDate: currentGig.expiryDate,
+      maxApplications: currentGig.maxApplications,
+      requests: updatedRequests,
+    });
 
     setGigs(prev => prev.map(g => {
       if (String(g.id) !== String(gigId)) return g;
-      updatedRequests = [...(g.requests || []), newRequest];
-      const reachedMax = g.maxApplications && updatedRequests.filter(r => r.status !== 'rejected').length >= g.maxApplications;
-      updatedGigStatus = reachedMax ? 'expired' : g.status;
       return {
         ...g,
         requests: updatedRequests,
@@ -439,44 +389,52 @@ export const GigProvider = ({ children }) => {
 
     showToast('Work request sent to publisher! Waiting for approval.', 'success');
 
-    // Sync to Supabase
+    // Update Supabase
     try {
       await supabase
         .from('gigs')
-        .update({ requests: updatedRequests, status: updatedGigStatus })
+        .update({ description: updatedEncodedDesc, status: updatedGigStatus })
         .eq('id', gigId);
-    } catch { /* fallback */ }
+    } catch (e) {
+      console.error('Supabase apply update error:', e);
+    }
 
     return true;
   }, [user, gigs, isGigExpired, showToast]);
 
   // Respond to request (Publisher approves or rejects worker request)
   const respondToRequest = useCallback(async (gigId, requestId, status) => {
-    let updatedRequests = [];
-    let updatedGigStatus = 'active';
-    let acceptedWorkerId = null;
+    const currentGig = gigs.find(g => String(g.id) === String(gigId));
+    if (!currentGig) return;
+
+    const targetReq = (currentGig.requests || []).find(r => r.id === requestId);
+    const updatedRequests = (currentGig.requests || []).map(r =>
+      r.id === requestId ? { ...r, status } : r
+    );
+
+    let acceptedWorkerId = currentGig.acceptedBy;
+    let updatedGigStatus = currentGig.status;
+
+    if (status === 'approved' && targetReq) {
+      acceptedWorkerId = isUuid(targetReq.workerId) ? targetReq.workerId : null;
+      updatedGigStatus = 'booked';
+    }
+
+    const updatedEncodedDesc = encodeDescriptionWithMeta(currentGig.description, {
+      contactDetails: currentGig.contactDetails,
+      attachments: currentGig.attachments,
+      expiryDate: currentGig.expiryDate,
+      maxApplications: currentGig.maxApplications,
+      requests: updatedRequests,
+    });
 
     setGigs(prev => prev.map(g => {
       if (String(g.id) !== String(gigId)) return g;
-      const targetReq = (g.requests || []).find(r => r.id === requestId);
-      updatedRequests = (g.requests || []).map(r =>
-        r.id === requestId ? { ...r, status } : r
-      );
-
-      if (status === 'approved' && targetReq) {
-        acceptedWorkerId = targetReq.workerId;
-        updatedGigStatus = 'booked';
-        return {
-          ...g,
-          requests: updatedRequests,
-          acceptedBy: acceptedWorkerId,
-          status: 'booked',
-        };
-      }
-
       return {
         ...g,
         requests: updatedRequests,
+        acceptedBy: targetReq?.workerId || g.acceptedBy,
+        status: updatedGigStatus,
       };
     }));
 
@@ -486,50 +444,63 @@ export const GigProvider = ({ children }) => {
       showToast('Application request rejected.', 'info');
     }
 
-    // Sync to Supabase
+    // Update Supabase
     try {
-      const updateData = { requests: updatedRequests };
+      const updatePayload = { description: updatedEncodedDesc, status: updatedGigStatus };
       if (status === 'approved' && acceptedWorkerId) {
-        updateData.accepted_by = acceptedWorkerId;
-        updateData.status = 'booked';
+        updatePayload.accepted_by = acceptedWorkerId;
       }
-      await supabase.from('gigs').update(updateData).eq('id', gigId);
-    } catch { /* fallback */ }
-  }, [showToast]);
+      await supabase.from('gigs').update(updatePayload).eq('id', gigId);
+    } catch (e) {
+      console.error('Supabase respond update error:', e);
+    }
+  }, [gigs, showToast]);
 
   // Send a chat message on a request thread
   const sendChatMessage = useCallback(async (gigId, requestId, text) => {
     if (!user || !text.trim()) return;
 
-    let updatedRequests = [];
+    const currentGig = gigs.find(g => String(g.id) === String(gigId));
+    if (!currentGig) return;
+
+    const updatedRequests = (currentGig.requests || []).map(r => {
+      if (r.id !== requestId) return r;
+      const newMsg = {
+        id: generateId(),
+        senderId: user.id,
+        senderName: user.name || 'User',
+        text: text.trim(),
+        timestamp: new Date().toISOString(),
+      };
+      return {
+        ...r,
+        messages: [...(r.messages || []), newMsg],
+      };
+    });
+
+    const updatedEncodedDesc = encodeDescriptionWithMeta(currentGig.description, {
+      contactDetails: currentGig.contactDetails,
+      attachments: currentGig.attachments,
+      expiryDate: currentGig.expiryDate,
+      maxApplications: currentGig.maxApplications,
+      requests: updatedRequests,
+    });
 
     setGigs(prev => prev.map(g => {
       if (String(g.id) !== String(gigId)) return g;
-      updatedRequests = (g.requests || []).map(r => {
-        if (r.id !== requestId) return r;
-        const newMsg = {
-          id: generateId(),
-          senderId: user.id,
-          senderName: user.name || 'User',
-          text: text.trim(),
-          timestamp: new Date().toISOString(),
-        };
-        return {
-          ...r,
-          messages: [...(r.messages || []), newMsg],
-        };
-      });
       return {
         ...g,
         requests: updatedRequests,
       };
     }));
 
-    // Sync to Supabase
+    // Update Supabase
     try {
-      await supabase.from('gigs').update({ requests: updatedRequests }).eq('id', gigId);
-    } catch { /* fallback */ }
-  }, [user]);
+      await supabase.from('gigs').update({ description: updatedEncodedDesc }).eq('id', gigId);
+    } catch (e) {
+      console.error('Supabase chat update error:', e);
+    }
+  }, [user, gigs]);
 
   // Cancel a gig
   const cancelGig = useCallback(async (gigId) => {
@@ -555,7 +526,7 @@ export const GigProvider = ({ children }) => {
     } catch { /* fallback */ }
   }, [showToast]);
 
-  // Delete a gig (Owner action)
+  // Delete a gig
   const deleteGig = useCallback(async (gigId) => {
     setGigs(prev => prev.filter(g => String(g.id) !== String(gigId)));
     showToast('Work requirement deleted successfully', 'info');
