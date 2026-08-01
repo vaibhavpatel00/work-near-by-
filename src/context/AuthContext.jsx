@@ -137,8 +137,6 @@ export const AuthProvider = ({ children }) => {
       loading,
       isAuthenticated: !!user,
       login,
-      sendOtp,
-      verifyOtp,
       signup,
       updateProfile,
       logout,
