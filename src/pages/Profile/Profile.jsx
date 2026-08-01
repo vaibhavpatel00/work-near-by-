@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getInitials } from '../../utils/helpers';
+import { getInitials, formatAmount } from '../../utils/helpers';
+import { COUNTRIES, getCountryByCode } from '../../data/countries';
 import {
   User, Phone, Mail, FileText, Star, LogOut, Check, ShieldCheck,
-  Settings, ChevronRight, HelpCircle, Bell, Lock, CreditCard
+  Settings, ChevronRight, HelpCircle, Bell, Lock, CreditCard, Globe
 } from 'lucide-react';
 import './Profile.css';
 
@@ -14,6 +15,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [countryCode, setCountryCode] = useState(user?.country || 'US');
   const [bio, setBio] = useState(user?.bio || '');
 
   if (!isAuthenticated) {
@@ -43,10 +45,12 @@ const Profile = () => {
     );
   }
 
+  const userCountry = getCountryByCode(user?.country || countryCode);
+
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      await updateProfile({ name, phone, bio });
+      await updateProfile({ name, phone, country: countryCode, bio });
       setIsEditing(false);
     } catch (err) {
       console.error('Error updating profile:', err);
@@ -90,6 +94,8 @@ const Profile = () => {
           <div className="profile-rating">
             <Star size={16} className="star-icon" />
             <span>{user.rating || '4.8'} Rating</span>
+            <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>
+            <span>{userCountry.flag} {userCountry.name}</span>
           </div>
 
           <div className="profile-stats-row">
@@ -104,7 +110,7 @@ const Profile = () => {
             </div>
             <div className="p-stat-divider"></div>
             <div className="p-stat">
-              <span className="p-stat-num">₹{user.totalEarned || 0}</span>
+              <span className="p-stat-num">{formatAmount(user.totalEarned || 0, userCountry.currencySymbol)}</span>
               <span className="p-stat-label">Earned</span>
             </div>
           </div>
@@ -138,6 +144,24 @@ const Profile = () => {
               </div>
 
               <div className="input-group mt-4">
+                <label className="input-label">Country</label>
+                <div className="input-icon-wrapper">
+                  <Globe size={18} className="input-icon" />
+                  <select
+                    className="input-field select-field"
+                    value={countryCode}
+                    onChange={e => setCountryCode(e.target.value)}
+                  >
+                    {COUNTRIES.map(c => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.name} ({c.dialCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="input-group mt-4">
                 <label className="input-label">Phone Number</label>
                 <div className="input-icon-wrapper">
                   <Phone size={18} className="input-icon" />
@@ -146,7 +170,7 @@ const Profile = () => {
                     className="input-field"
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
+                    placeholder="+1 555-123-4567"
                   />
                 </div>
               </div>
@@ -173,6 +197,13 @@ const Profile = () => {
                 <div>
                   <span className="info-label">Email</span>
                   <span className="info-val">{user.email}</span>
+                </div>
+              </div>
+              <div className="info-item">
+                <Globe size={16} className="text-tertiary" />
+                <div>
+                  <span className="info-label">Country</span>
+                  <span className="info-val">{userCountry.flag} {userCountry.name} ({userCountry.currency})</span>
                 </div>
               </div>
               <div className="info-item">

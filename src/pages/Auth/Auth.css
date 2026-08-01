@@ -251,3 +251,42 @@
 .auth-terms a:hover {
   text-decoration: underline;
 }
+
+/* Country Select & Phone Input */
+.select-field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2064748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem !important;
+  cursor: pointer;
+}
+
+.phone-input-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.country-dial-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.6rem;
+  height: 2.25rem;
+  background: #f1f5f9;
+  border-right: 1px solid #e2e8f0;
+  margin-left: 2.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  user-select: none;
+}
+
+.country-dial-badge .dial-code {
+  color: #2563eb;
+}
+
+.phone-input-field {
+  padding-left: 0.75rem !important;
+}
+

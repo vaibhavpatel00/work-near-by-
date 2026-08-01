@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
       name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
       email: supabaseUser.email || '',
       phone: supabaseUser.user_metadata?.phone || supabaseUser.phone || '',
+      country: supabaseUser.user_metadata?.country || 'US',
       bio: supabaseUser.user_metadata?.bio || '',
       avatar: supabaseUser.user_metadata?.avatar || null,
       rating: supabaseUser.user_metadata?.rating || 0,
@@ -55,75 +56,56 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    return mapUser(data.user);
-  };
+  const login = async (identifier, password) => {
+    const trimmed = identifier.trim();
+    const isEmail = trimmed.includes('@');
 
-  const sendOtp = async (email, metadata = {}) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          data: metadata,
-          shouldCreateUser: true,
-        },
+    if (isEmail) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmed,
+        password,
       });
-      if (error) {
-        console.error('Supabase signInWithOtp Error:', error);
-        throw error;
+      if (error) throw error;
+      return mapUser(data.user);
+    } else {
+      // Mobile Number login attempt
+      let formattedPhone = trimmed;
+      if (!formattedPhone.startsWith('+')) {
+        formattedPhone = '+' + formattedPhone.replace(/\D/g, '');
       }
-      return data;
-    } catch (err) {
-      console.error('sendOtp catch error:', err);
-      throw err;
-    }
-  };
 
-  const verifyOtp = async (email, token) => {
-    try {
-      // Try verifying with type 'email' first, then fallback to 'signup'
-      let { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token,
-        type: 'email',
+      // Try phone sign-in via Supabase Auth
+      let res = await supabase.auth.signInWithPassword({
+        phone: formattedPhone,
+        password,
       });
 
-      if (error) {
-        const fallback = await supabase.auth.verifyOtp({
-          email,
-          token,
-          type: 'signup',
+      if (res.error) {
+        // Fallback: try raw digits
+        const rawDigits = trimmed.replace(/\D/g, '');
+        const altRes = await supabase.auth.signInWithPassword({
+          phone: rawDigits,
+          password,
         });
-        if (fallback.error) {
-          console.error('Supabase verifyOtp Error:', error, fallback.error);
-          throw fallback.error;
+        if (!altRes.error) {
+          return mapUser(altRes.data.user);
         }
-        data = fallback.data;
+        throw res.error;
       }
-
-      const mapped = mapUser(data.user);
-      setUser(mapped);
-      setSession(data.session);
-      return mapped;
-    } catch (err) {
-      console.error('verifyOtp catch error:', err);
-      throw err;
+      return mapUser(res.data.user);
     }
   };
 
-  const signup = async (name, email, phone, password) => {
+  const signup = async (name, email, phone, country, password) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      phone: phone || undefined,
       options: {
         data: {
           name,
           phone,
+          country,
         },
       },
     });

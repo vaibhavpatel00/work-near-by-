@@ -73,10 +73,11 @@ export const formatTime = (dateString) => {
 };
 
 /**
- * Format currency
+ * Format currency with dynamic symbol
  */
-export const formatAmount = (amount) => {
-  return `₹${amount.toLocaleString('en-IN')}`;
+export const formatAmount = (amount, symbol = '$') => {
+  const num = Number(amount) || 0;
+  return `${symbol}${num.toLocaleString()}`;
 };
 
 /**

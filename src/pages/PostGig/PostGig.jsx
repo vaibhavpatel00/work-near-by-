@@ -9,7 +9,7 @@ import { CATEGORIES } from '../../data/categories';
 import { useGigs } from '../../context/GigContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
-import { formatAmount } from '../../utils/helpers';
+import { COUNTRIES, getCountryByCode } from '../../data/countries';
 import './PostGig.css';
 
 const STEPS = ['Category', 'Details & Files', 'Schedule & Expiry', 'Amount', 'Contact Info', 'Review'];
@@ -19,6 +19,8 @@ const PostGig = () => {
   const { postGig, showToast } = useGigs();
   const { user, isAuthenticated } = useAuth();
   const { location } = useLocation();
+
+  const userCountry = getCountryByCode(user?.country);
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
@@ -33,6 +35,7 @@ const PostGig = () => {
     expiryDate: '',
     maxApplications: 5,
     amount: '',
+    currencySymbol: userCountry.currencySymbol || '$',
     contactPhone: user?.phone || '',
     contactEmail: user?.email || '',
     whatsappPref: true,
@@ -109,6 +112,8 @@ const PostGig = () => {
       description: form.description,
       category: finalCategory,
       amount: Number(form.amount),
+      currency: form.currencySymbol,
+      currencySymbol: form.currencySymbol,
       date: dateTime,
       duration: form.duration,
       location: form.location,
@@ -364,7 +369,27 @@ const PostGig = () => {
               <p className="text-secondary text-sm">How much will you pay for this work?</p>
 
               <div className="amount-input-wrapper mt-6">
-                <span className="amount-currency">₹</span>
+                <select
+                  className="amount-currency-select"
+                  value={form.currencySymbol}
+                  onChange={e => updateForm('currencySymbol', e.target.value)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    color: 'var(--primary-color)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    marginRight: '0.5rem'
+                  }}
+                >
+                  {COUNTRIES.map(c => (
+                    <option key={c.code} value={c.currencySymbol}>
+                      {c.flag} {c.currencySymbol} ({c.currency})
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="number"
                   className="amount-input"

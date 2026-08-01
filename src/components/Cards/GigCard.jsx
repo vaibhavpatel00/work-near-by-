@@ -36,8 +36,7 @@ const GigCard = ({ gig }) => {
 
       <div className="gig-card-meta">
         <div className="gig-card-amount">
-          <IndianRupee size={14} />
-          <span>{gig.amount.toLocaleString('en-IN')}</span>
+          <span>{formatAmount(gig.amount, gig.currency || gig.currencySymbol || '$')}</span>
         </div>
         <div className="gig-card-info">
           <div className="gig-card-info-item">

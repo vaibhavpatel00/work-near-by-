@@ -1,25 +1,26 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Lock, Eye, EyeOff, KeyRound, ArrowRight } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff, Globe, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { COUNTRIES, DEFAULT_COUNTRY } from '../../data/countries';
 import './Auth.css';
 
 const Signup = () => {
-  const [authMode, setAuthMode] = useState('otp'); // 'otp' or 'password'
-  const [step, setStep] = useState('request'); // 'request' or 'verify'
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [selectedCountryCode, setSelectedCountryCode] = useState(DEFAULT_COUNTRY.code);
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [otpToken, setOtpToken] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { signup, sendOtp, verifyOtp } = useAuth();
+  const { signup } = useAuth();
   const navigate = useNavigate();
+
+  const selectedCountry = COUNTRIES.find(c => c.code === selectedCountryCode) || DEFAULT_COUNTRY;
 
   const formatErr = (err, defaultMsg) => {
     if (!err) return defaultMsg;
@@ -29,18 +30,20 @@ const Signup = () => {
     return defaultMsg;
   };
 
-  // Password Registration
-  const handlePasswordSignup = async (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
-    setMessage('');
 
-    if (!name || !email || !phone || !password || !confirmPassword) {
-      setError('Please fill in all required fields');
+    if (!name.trim()) {
+      setError('Please enter your full name');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address');
+      return;
+    }
+    if (!phoneNumber.trim() || phoneNumber.trim().length < 6) {
+      setError('Please enter a valid mobile number');
       return;
     }
     if (password.length < 6) {
@@ -52,62 +55,16 @@ const Signup = () => {
       return;
     }
 
+    // Combine dial code with phone number (e.g. +1 5551234567)
+    const fullPhone = `${selectedCountry.dialCode} ${phoneNumber.trim()}`;
+
     setLoading(true);
     try {
-      await signup(name, email, phone, password);
+      await signup(name.trim(), email.trim(), fullPhone, selectedCountry.code, password);
       navigate('/');
     } catch (err) {
-      setError(formatErr(err, 'Failed to create account. Check Supabase credentials.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 1: Send OTP to Email
-  const handleSendOtp = async (e) => {
-    e.preventDefault();
-    setError('');
-    setMessage('');
-
-    if (!name || !email) {
-      setError('Please enter your full name and email address');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await sendOtp(email, { name, phone });
-      setMessage(`OTP passcode sent to ${email}. Check your email inbox!`);
-      setStep('verify');
-    } catch (err) {
-      console.error('OTP Send error:', err);
-      setError(formatErr(err, 'Failed to send OTP. Please ensure Email provider and OTP are enabled in Supabase Auth settings.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 2: Verify OTP
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (!otpToken || otpToken.length < 6) {
-      setError('Please enter the 6-digit OTP code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await verifyOtp(email, otpToken);
-      navigate('/');
-    } catch (err) {
-      console.error('OTP Verify error:', err);
-      setError(formatErr(err, 'Invalid or expired OTP code. Please try again.'));
+      console.error('Signup error:', err);
+      setError(formatErr(err, 'Failed to create account. Please check your details.'));
     } finally {
       setLoading(false);
     }
@@ -121,244 +78,150 @@ const Signup = () => {
             <img src="/wikwik-logo.png" alt="wikwik" className="auth-logo-img" />
             <h1 className="auth-logo-text">wikwik</h1>
           </div>
-          <p className="auth-subtitle">Hyperlocal Work Marketplace</p>
+          <p className="auth-subtitle">Global Hyperlocal Work Marketplace</p>
         </div>
 
-        {/* Mode Toggle Tabs */}
-        <div className="auth-tabs">
-          <button
-            type="button"
-            className={`auth-tab-btn ${authMode === 'otp' ? 'active' : ''}`}
-            onClick={() => { setAuthMode('otp'); setStep('request'); setError(''); setMessage(''); }}
-          >
-            <KeyRound size={15} /> Email OTP
+        <form className="auth-form" onSubmit={handleSignup}>
+          <div className="auth-form-header">
+            <h2 className="auth-title">Create Account</h2>
+            <p className="auth-desc">Register to post & find work anywhere in the world</p>
+          </div>
+
+          {error && <div className="auth-error">{error}</div>}
+
+          {/* Full Name */}
+          <div className="input-group">
+            <label className="input-label">Full Name</label>
+            <div className="input-icon-wrapper">
+              <User size={18} className="input-icon" />
+              <input
+                type="text"
+                className="input-field"
+                placeholder="John Doe"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                autoComplete="name"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Email Address */}
+          <div className="input-group">
+            <label className="input-label">Email Address</label>
+            <div className="input-icon-wrapper">
+              <Mail size={18} className="input-icon" />
+              <input
+                type="email"
+                className="input-field"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Country Selection */}
+          <div className="input-group">
+            <label className="input-label">Country</label>
+            <div className="input-icon-wrapper">
+              <Globe size={18} className="input-icon" />
+              <select
+                className="input-field select-field"
+                value={selectedCountryCode}
+                onChange={e => setSelectedCountryCode(e.target.value)}
+                required
+              >
+                {COUNTRIES.map(c => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.name} ({c.dialCode})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Mobile Phone Number */}
+          <div className="input-group">
+            <label className="input-label">Mobile Number</label>
+            <div className="input-icon-wrapper phone-input-wrapper">
+              <Phone size={18} className="input-icon" />
+              <div className="country-dial-badge">
+                <span>{selectedCountry.flag}</span>
+                <span className="dial-code">{selectedCountry.dialCode}</span>
+              </div>
+              <input
+                type="tel"
+                className="input-field phone-input-field"
+                placeholder="98765 43210"
+                value={phoneNumber}
+                onChange={e => setPhoneNumber(e.target.value.replace(/[^\d\s-]/g, ''))}
+                autoComplete="tel"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Password */}
+          <div className="input-group">
+            <label className="input-label">Password</label>
+            <div className="input-icon-wrapper">
+              <Lock size={18} className="input-icon" />
+              <input
+                type={showPass ? 'text' : 'password'}
+                className="input-field"
+                placeholder="Minimum 6 characters"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                style={{ paddingRight: '2.75rem' }}
+                autoComplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="input-toggle-pass"
+                onClick={() => setShowPass(!showPass)}
+              >
+                {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm Password */}
+          <div className="input-group">
+            <label className="input-label">Confirm Password</label>
+            <div className="input-icon-wrapper">
+              <Lock size={18} className="input-icon" />
+              <input
+                type={showConfirmPass ? 'text' : 'password'}
+                className="input-field"
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                style={{ paddingRight: '2.75rem' }}
+                autoComplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="input-toggle-pass"
+                onClick={() => setShowConfirmPass(!showConfirmPass)}
+              >
+                {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary btn-lg btn-block mt-4" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Register & Create Account'}
+            <ArrowRight size={18} />
           </button>
-          <button
-            type="button"
-            className={`auth-tab-btn ${authMode === 'password' ? 'active' : ''}`}
-            onClick={() => { setAuthMode('password'); setError(''); setMessage(''); }}
-          >
-            <Lock size={15} /> Password
-          </button>
-        </div>
-
-        {/* --- EMAIL OTP REGISTRATION --- */}
-        {authMode === 'otp' && (
-          <>
-            {step === 'request' ? (
-              <form className="auth-form" onSubmit={handleSendOtp}>
-                <div className="auth-form-header">
-                  <h2 className="auth-title">Create Account via OTP</h2>
-                  <p className="auth-desc">No password needed. We'll send a 6-digit code to your email</p>
-                </div>
-
-                {error && <div className="auth-error">{error}</div>}
-                {message && <div className="auth-success" style={{ padding: '0.75rem', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', borderRadius: '0.5rem', fontSize: '0.875rem', marginBottom: '1rem' }}>{message}</div>}
-
-                <div className="input-group">
-                  <label className="input-label">Full Name</label>
-                  <div className="input-icon-wrapper">
-                    <User size={18} className="input-icon" />
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="John Doe"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      autoComplete="name"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <label className="input-label">Email Address</label>
-                  <div className="input-icon-wrapper">
-                    <Mail size={18} className="input-icon" />
-                    <input
-                      type="email"
-                      className="input-field"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      autoComplete="email"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <label className="input-label">Phone Number (Optional)</label>
-                  <div className="input-icon-wrapper">
-                    <Phone size={18} className="input-icon" />
-                    <input
-                      type="tel"
-                      className="input-field"
-                      placeholder="+91 98765 43210"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      autoComplete="tel"
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="btn btn-primary btn-lg btn-block mt-4" disabled={loading}>
-                  <KeyRound size={18} />
-                  {loading ? 'Sending OTP...' : 'Send Registration OTP'}
-                </button>
-              </form>
-            ) : (
-              <form className="auth-form" onSubmit={handleVerifyOtp}>
-                <div className="auth-form-header">
-                  <h2 className="auth-title">Verify Registration</h2>
-                  <p className="auth-desc">Enter the 6-digit code sent to <strong>{email}</strong></p>
-                </div>
-
-                {error && <div className="auth-error">{error}</div>}
-                {message && <div className="auth-success" style={{ padding: '0.75rem', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', borderRadius: '0.5rem', fontSize: '0.875rem', marginBottom: '1rem' }}>{message}</div>}
-
-                <div className="input-group">
-                  <label className="input-label">6-Digit Code</label>
-                  <div className="input-icon-wrapper">
-                    <KeyRound size={18} className="input-icon" />
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="123456"
-                      value={otpToken}
-                      onChange={e => setOtpToken(e.target.value)}
-                      maxLength={6}
-                      style={{ letterSpacing: '0.25em', fontSize: '1.25rem', fontWeight: 'bold', textAlign: 'center' }}
-                      autoComplete="one-time-code"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="btn btn-primary btn-lg btn-block mt-4" disabled={loading}>
-                  <ArrowRight size={18} />
-                  {loading ? 'Verifying Account...' : 'Complete Registration'}
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-block mt-2"
-                  onClick={() => setStep('request')}
-                >
-                  ← Back to Details
-                </button>
-              </form>
-            )}
-          </>
-        )}
-
-        {/* --- PASSWORD REGISTRATION --- */}
-        {authMode === 'password' && (
-          <form className="auth-form" onSubmit={handlePasswordSignup}>
-            <div className="auth-form-header">
-              <h2 className="auth-title">Create Account</h2>
-              <p className="auth-desc">Join the community and start posting/finding local work</p>
-            </div>
-
-            {error && <div className="auth-error">{error}</div>}
-
-            <div className="input-group">
-              <label className="input-label">Full Name</label>
-              <div className="input-icon-wrapper">
-                <User size={18} className="input-icon" />
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  autoComplete="name"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Email Address</label>
-              <div className="input-icon-wrapper">
-                <Mail size={18} className="input-icon" />
-                <input
-                  type="email"
-                  className="input-field"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  autoComplete="email"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Phone Number</label>
-              <div className="input-icon-wrapper">
-                <Phone size={18} className="input-icon" />
-                <input
-                  type="tel"
-                  className="input-field"
-                  placeholder="+91 98765 43210"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  autoComplete="tel"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Password</label>
-              <div className="input-icon-wrapper">
-                <Lock size={18} className="input-icon" />
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  className="input-field"
-                  placeholder="Min. 6 characters"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  style={{ paddingRight: '2.75rem' }}
-                  autoComplete="new-password"
-                  required
-                />
-                <button
-                  type="button"
-                  className="input-toggle-pass"
-                  onClick={() => setShowPass(!showPass)}
-                >
-                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Confirm Password</label>
-              <div className="input-icon-wrapper">
-                <Lock size={18} className="input-icon" />
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  className="input-field"
-                  placeholder="Re-enter your password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  autoComplete="new-password"
-                  required
-                />
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn-primary btn-lg btn-block mt-4" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create Account'}
-              <ArrowRight size={18} />
-            </button>
-          </form>
-        )}
+        </form>
 
         <p className="auth-footer">
-          Already have an account? <Link to="/login">Sign In</Link>
+          Already registered? <Link to="/login">Sign In</Link>
         </p>
       </div>
     </div>

@@ -15,16 +15,18 @@ const reverseGeocode = async (lat, lng) => {
     
     const sublocality = addr.suburb || addr.neighbourhood || addr.residential || addr.quarter || addr.subdistrict || addr.locality;
     const city = addr.city || addr.town || addr.village || addr.county || addr.state_district;
+    const country = addr.country || '';
     
-    if (sublocality && city) {
-      return `${sublocality}, ${city}`;
-    } else if (sublocality) {
-      return sublocality;
-    } else if (city) {
-      return city;
+    let parts = [];
+    if (sublocality) parts.push(sublocality);
+    if (city) parts.push(city);
+    if (country) parts.push(country);
+
+    if (parts.length > 0) {
+      return parts.join(', ');
     } else if (data.display_name) {
-      const parts = data.display_name.split(',');
-      return parts.slice(0, 2).join(',').trim();
+      const splitParts = data.display_name.split(',');
+      return splitParts.slice(0, 3).join(',').trim();
     }
   } catch (err) {
     console.info('Reverse geocode fallback:', err);
@@ -39,7 +41,7 @@ export const LocationProvider = ({ children }) => {
       try { return JSON.parse(stored); }
       catch { /* ignore */ }
     }
-    return { lat: DEFAULT_LAT, lng: DEFAULT_LNG, address: 'Hyderabad, India' };
+    return { lat: DEFAULT_LAT, lng: DEFAULT_LNG, address: 'Global Location' };
   });
   const [radius, setRadius] = useState(10); // km
   const [locationError, setLocationError] = useState(null);

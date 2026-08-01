@@ -8,7 +8,7 @@ import {
 import { useGigs } from '../../context/GigContext';
 import { useAuth } from '../../context/AuthContext';
 import { getCategoryById } from '../../data/categories';
-import { formatDate, formatTime, formatDistance, getInitials } from '../../utils/helpers';
+import { formatDate, formatTime, formatDistance, getInitials, formatAmount } from '../../utils/helpers';
 import ChatDrawer from '../../components/Chat/ChatDrawer';
 import './GigDetail.css';
 
@@ -127,8 +127,7 @@ const GigDetail = () => {
           <div className="detail-amount-tag">
             <span className="amount-label">Offered Pay:</span>
             <div className="amount-value">
-              <IndianRupee size={22} />
-              <span>{gig.amount.toLocaleString('en-IN')}</span>
+              <span>{formatAmount(gig.amount, gig.currency || gig.currencySymbol || '$')}</span>
             </div>
             <span className="pay-note">(Direct offline payment)</span>
           </div>
