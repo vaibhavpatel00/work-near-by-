@@ -158,6 +158,20 @@ export const AuthProvider = ({ children }) => {
     return updatedUser;
   };
 
+  const resetPassword = async (email) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+    return data;
+  };
+
+  const updateUserPassword = async (newPassword) => {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (error) throw error;
+    return mapUser(data.user);
+  };
+
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
@@ -175,6 +189,8 @@ export const AuthProvider = ({ children }) => {
       sendOtp,
       verifyOtp,
       signup,
+      resetPassword,
+      updateUserPassword,
       updateProfile,
       logout,
       supabase,

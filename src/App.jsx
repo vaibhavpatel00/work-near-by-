@@ -16,6 +16,7 @@ import History from './pages/History/History';
 import Chats from './pages/Chats/Chats';
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
+import ForgotPassword from './pages/Auth/ForgotPassword';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
                 <Route path="/chats" element={<Chats />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
               </Routes>
               <BottomNav />
             </div>
