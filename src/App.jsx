@@ -18,6 +18,7 @@ import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
+import PrivacyPolicy from './pages/PrivacyPolicy/PrivacyPolicy';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               </Routes>
               <BottomNav />
             </div>
