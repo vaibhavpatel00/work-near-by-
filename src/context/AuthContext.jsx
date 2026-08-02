@@ -125,21 +125,30 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const verifyOtp = async (email, token) => {
+  const verifyOtp = async (email, token, type = 'email') => {
     let { data, error } = await supabase.auth.verifyOtp({
       email,
       token,
-      type: 'email',
+      type: 'recovery',
     });
 
     if (error) {
       const fallback = await supabase.auth.verifyOtp({
         email,
         token,
-        type: 'signup',
+        type: type || 'email',
       });
-      if (fallback.error) throw fallback.error;
-      data = fallback.data;
+      if (fallback.error) {
+        const altFallback = await supabase.auth.verifyOtp({
+          email,
+          token,
+          type: 'signup',
+        });
+        if (altFallback.error) throw fallback.error;
+        data = altFallback.data;
+      } else {
+        data = fallback.data;
+      }
     }
 
     const mapped = mapUser(data.user);
@@ -159,7 +168,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const resetPassword = async (email) => {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
     if (error) throw error;
     return data;
   };

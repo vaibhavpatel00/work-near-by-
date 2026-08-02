@@ -17,6 +17,7 @@ import Chats from './pages/Chats/Chats';
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
 import ForgotPassword from './pages/Auth/ForgotPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
               </Routes>
               <BottomNav />
             </div>
