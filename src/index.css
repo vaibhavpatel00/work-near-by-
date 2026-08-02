@@ -278,3 +278,50 @@ html, body {
 
 .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
 .animate-fade-in-up { animation: fadeInUp 0.35s ease-out forwards; }
+
+/* === Native Android App Adjustments === */
+/* Safe area insets for status bar and navigation bar */
+html {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Disable overscroll/bounce for native feel */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Disable text selection and context menus in app mode */
+body.capacitor-app {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Allow text selection in input fields */
+body.capacitor-app input,
+body.capacitor-app textarea,
+body.capacitor-app [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Adjust navbar for status bar on Android */
+body.capacitor-app .navbar {
+  padding-top: var(--safe-area-top);
+  height: calc(var(--navbar-height) + var(--safe-area-top));
+}
+
+/* Adjust bottom nav for navigation bar on Android */
+body.capacitor-app .bottom-nav {
+  padding-bottom: var(--safe-area-bottom);
+  height: calc(var(--bottomnav-height) + var(--safe-area-bottom));
+}
+
+/* Adjust page content for safe areas */
+body.capacitor-app .page-content {
+  padding-top: calc(var(--navbar-height) + var(--safe-area-top));
+  padding-bottom: calc(var(--bottomnav-height) + var(--safe-area-bottom) + var(--space-8));
+}
