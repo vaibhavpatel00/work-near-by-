@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Compass, PlusCircle, Clock, MessageSquare, User } from 'lucide-react';
+import { Home, Compass, PlusCircle, Clock, MessageSquare, User, Navigation } from 'lucide-react';
 import './BottomNav.css';
 
 const BottomNav = () => {
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },
     { to: '/explore', icon: Compass, label: 'Explore' },
+    { to: '/travel', icon: Navigation, label: 'Travel' },
     { to: '/post', icon: PlusCircle, label: 'Post', isCenter: true },
     { to: '/history', icon: Clock, label: 'History' },
     { to: '/chats', icon: MessageSquare, label: 'Chats' },

@@ -28,13 +28,13 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: var(--space-2);
+  padding: var(--space-1) var(--space-1);
   color: var(--text-tertiary);
   text-decoration: none;
-  font-size: var(--fs-xs);
+  font-size: 10px;
   transition: all var(--transition-fast);
   position: relative;
-  min-width: 48px;
+  min-width: 40px;
   border-radius: var(--radius-lg);
 }
 

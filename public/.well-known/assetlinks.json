@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.wikwik.app",
+    "sha256_cert_fingerprints": [
+      "FA:EF:89:3D:71:FA:D1:58:F2:ED:FA:21:7D:0A:54:1B:7A:D5:14:B2:92:05:95:2B:1B:B2:1A:BF:3B:46:53:5A"
+    ]
+  }
+}]

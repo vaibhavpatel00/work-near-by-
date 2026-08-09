@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LocationProvider } from './context/LocationContext';
 import { GigProvider } from './context/GigContext';
+import { RideProvider } from './context/RideContext';
 
 import Navbar from './components/Layout/Navbar';
 import BottomNav from './components/Layout/BottomNav';
@@ -19,6 +20,9 @@ import Signup from './pages/Auth/Signup';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
 import PrivacyPolicy from './pages/PrivacyPolicy/PrivacyPolicy';
+import Travel from './pages/Travel/Travel';
+import OfferRide from './pages/Travel/OfferRide';
+import RideDetail from './pages/Travel/RideDetail';
 
 function App() {
   return (
@@ -26,25 +30,30 @@ function App() {
       <AuthProvider>
         <LocationProvider>
           <GigProvider>
-            <div className="app-layout">
-              <Navbar />
-              <Toast />
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/post" element={<PostGig />} />
-                <Route path="/gig/:id" element={<GigDetail />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/history" element={<History />} />
-                <Route path="/chats" element={<Chats />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              </Routes>
-              <BottomNav />
-            </div>
+            <RideProvider>
+              <div className="app-layout">
+                <Navbar />
+                <Toast />
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/explore" element={<Explore />} />
+                  <Route path="/post" element={<PostGig />} />
+                  <Route path="/gig/:id" element={<GigDetail />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/history" element={<History />} />
+                  <Route path="/chats" element={<Chats />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/travel" element={<Travel />} />
+                  <Route path="/travel/offer" element={<OfferRide />} />
+                  <Route path="/travel/ride/:id" element={<RideDetail />} />
+                </Routes>
+                <BottomNav />
+              </div>
+            </RideProvider>
           </GigProvider>
         </LocationProvider>
       </AuthProvider>
@@ -53,3 +62,4 @@ function App() {
 }
 
 export default App;
+

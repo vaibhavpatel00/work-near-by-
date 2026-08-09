@@ -1,0 +1,221 @@
+/* ============================================
+   RideCard — Travel Ride Card Styles
+   ============================================ */
+
+.ride-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  text-decoration: none;
+  color: inherit;
+  transition: all var(--transition-base);
+  border-left: 3px solid transparent;
+}
+
+.ride-card.ride-car {
+  border-left-color: #3b82f6;
+}
+
+.ride-card.ride-bike {
+  border-left-color: #f59e0b;
+}
+
+.ride-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Header */
+.ride-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ride-vehicle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  font-family: var(--font-heading);
+}
+
+.ride-vehicle-badge.car {
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+}
+
+.ride-vehicle-badge.bike {
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+}
+
+.ride-card-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+/* Route */
+.ride-route {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  padding-left: 4px;
+}
+
+.ride-route-point {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.route-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.origin-dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.dest-dot {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.route-text {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ride-route-line {
+  display: flex;
+  align-items: center;
+  padding-left: 2px;
+  margin-left: 3px;
+  border-left: 2px dashed var(--border-color);
+  height: 18px;
+}
+
+.route-arrow {
+  color: var(--text-tertiary);
+  margin-left: 8px;
+}
+
+/* Meta */
+.ride-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ride-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.ride-card-price span {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  font-family: var(--font-heading);
+  color: #16a34a;
+}
+
+.ride-card-price small {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.ride-card-info {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.ride-card-info-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+/* Footer */
+.ride-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-color);
+}
+
+.ride-card-driver {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.driver-name {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ride-card-badges {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* Badge styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-heading);
+  letter-spacing: 0.02em;
+}
+
+.badge-success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.badge-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.badge-primary {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+.badge-info {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
