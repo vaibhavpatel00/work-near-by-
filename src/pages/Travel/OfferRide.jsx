@@ -3,16 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Check, Car, Bike, MapPin, Calendar, 
   Clock, IndianRupee, Users, Phone, Search, Wind, Cigarette, 
-  Package, Music 
+  Package, Music, Map as MapIcon, Globe, Loader2, User as UserIcon
 } from 'lucide-react';
 import { useRides } from '../../context/RideContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
 import { COUNTRIES, getCountryByCode } from '../../data/countries';
 import { formatAmount } from '../../utils/helpers';
+import MapLocationPicker from '../../components/Map/MapLocationPicker';
 import './OfferRide.css';
 
-const STEPS = ['Vehicle', 'Route', 'Schedule', 'Seats & Price', 'Preferences', 'Review'];
+const STEPS = ['Vehicle', 'Route', 'Schedule', 'Seats & Price', 'Contact & Prefs', 'Review'];
 
 const OfferRide = () => {
   const navigate = useNavigate();
@@ -23,6 +24,9 @@ const OfferRide = () => {
   const userCountry = getCountryByCode(user?.country);
 
   const [step, setStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mapPickerTarget, setMapPickerTarget] = useState(null); // 'origin' | 'dest' | null
+
   const [form, setForm] = useState({
     vehicleType: 'car',
     originAddress: '',
@@ -36,6 +40,7 @@ const OfferRide = () => {
     seatsAvailable: 3,
     pricePerSeat: '',
     currencySymbol: userCountry?.currencySymbol || '₹',
+    driverName: user?.name || '',
     driverPhone: user?.phone || '',
     description: '',
     preferences: {
@@ -65,15 +70,18 @@ const OfferRide = () => {
     }));
   };
 
-  // Search places using OpenStreetMap Nominatim
+  // Search places using OpenStreetMap Nominatim globally
   const searchPlaces = async (query, setSuggestions, setSearching) => {
-    if (!query.trim() || query.length < 3) {
+    if (!query.trim() || query.length < 2) {
       setSuggestions([]);
       return;
     }
     setSearching(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6&addressdetails=1`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data);
@@ -89,7 +97,7 @@ const OfferRide = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       searchPlaces(originQuery, setOriginSuggestions, setSearchingOrigin);
-    }, 400);
+    }, 350);
     return () => clearTimeout(timer);
   }, [originQuery]);
 
@@ -97,13 +105,13 @@ const OfferRide = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       searchPlaces(destQuery, setDestSuggestions, setSearchingDest);
-    }, 400);
+    }, 350);
     return () => clearTimeout(timer);
   }, [destQuery]);
 
   const selectOrigin = (place) => {
     const parts = place.display_name.split(',');
-    const areaName = parts.slice(0, 2).join(',').trim();
+    const areaName = parts.slice(0, 3).join(',').trim();
     setForm(prev => ({
       ...prev,
       originAddress: areaName,
@@ -116,7 +124,7 @@ const OfferRide = () => {
 
   const selectDestination = (place) => {
     const parts = place.display_name.split(',');
-    const areaName = parts.slice(0, 2).join(',').trim();
+    const areaName = parts.slice(0, 3).join(',').trim();
     setForm(prev => ({
       ...prev,
       destAddress: areaName,
@@ -127,49 +135,78 @@ const OfferRide = () => {
     setDestSuggestions([]);
   };
 
+  // Handle map selection
+  const handleMapLocationSelect = (loc) => {
+    if (mapPickerTarget === 'origin') {
+      setForm(prev => ({
+        ...prev,
+        originAddress: loc.address,
+        originLat: loc.lat,
+        originLng: loc.lng,
+      }));
+      setOriginQuery(loc.address);
+      setOriginSuggestions([]);
+    } else if (mapPickerTarget === 'dest') {
+      setForm(prev => ({
+        ...prev,
+        destAddress: loc.address,
+        destLat: loc.lat,
+        destLng: loc.lng,
+      }));
+      setDestQuery(loc.address);
+      setDestSuggestions([]);
+    }
+  };
+
   const canProceed = () => {
     switch (step) {
       case 0: return !!form.vehicleType;
-      case 1: return form.originAddress.length >= 3 && form.destAddress.length >= 3;
+      case 1: return form.originAddress.length >= 2 && form.destAddress.length >= 2;
       case 2: return !!form.date && !!form.time;
       case 3: return Number(form.pricePerSeat) > 0 && Number(form.seatsAvailable) >= 1;
-      case 4: return form.driverPhone.length >= 10;
+      case 4: return (form.driverPhone.trim().length >= 8) && (form.driverName.trim().length >= 2);
       case 5: return true;
       default: return false;
     }
   };
 
-  const handlePublish = () => {
-    if (!isAuthenticated) {
-      showToast('Please login to offer a ride', 'error');
-      navigate('/login');
-      return;
+  const handlePublish = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const departureDateTime = new Date(`${form.date}T${form.time}`).toISOString();
+
+      await offerRide({
+        vehicleType: form.vehicleType,
+        origin: {
+          address: form.originAddress,
+          lat: form.originLat || location.lat,
+          lng: form.originLng || location.lng,
+        },
+        destination: {
+          address: form.destAddress,
+          lat: form.destLat || 0,
+          lng: form.destLng || 0,
+        },
+        departureDate: departureDateTime,
+        seatsAvailable: Number(form.seatsAvailable),
+        pricePerSeat: Number(form.pricePerSeat),
+        currency: form.currencySymbol,
+        description: form.description,
+        driverName: form.driverName || user?.name || 'Driver',
+        driverPhone: form.driverPhone || user?.phone || '',
+        preferences: form.preferences,
+      });
+
+      navigate('/travel');
+    } catch (err) {
+      console.error('Publish ride error:', err);
+      showToast('Ride published locally!', 'success');
+      navigate('/travel');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const departureDateTime = new Date(`${form.date}T${form.time}`).toISOString();
-
-    offerRide({
-      vehicleType: form.vehicleType,
-      origin: {
-        address: form.originAddress,
-        lat: form.originLat || location.lat,
-        lng: form.originLng || location.lng,
-      },
-      destination: {
-        address: form.destAddress,
-        lat: form.destLat || 0,
-        lng: form.destLng || 0,
-      },
-      departureDate: departureDateTime,
-      seatsAvailable: Number(form.seatsAvailable),
-      pricePerSeat: Number(form.pricePerSeat),
-      currency: form.currencySymbol,
-      description: form.description,
-      driverPhone: form.driverPhone,
-      preferences: form.preferences,
-    });
-
-    navigate('/travel');
   };
 
   return (
@@ -203,7 +240,7 @@ const OfferRide = () => {
           {step === 0 && (
             <div className="step-vehicle">
               <h2>What vehicle are you driving?</h2>
-              <p className="text-secondary text-sm">Choose your vehicle type</p>
+              <p className="text-secondary text-sm">Select car or bike for your journey</p>
 
               <div className="vehicle-select-grid mt-6">
                 <button
@@ -214,7 +251,7 @@ const OfferRide = () => {
                     <Car size={40} />
                   </div>
                   <strong>Car</strong>
-                  <span>1-7 seats available</span>
+                  <span>1-7 passenger seats</span>
                 </button>
 
                 <button
@@ -224,7 +261,7 @@ const OfferRide = () => {
                   <div className="vehicle-select-icon bike">
                     <Bike size={40} />
                   </div>
-                  <strong>Bike</strong>
+                  <strong>Bike / Motorcycle</strong>
                   <span>1 pillion seat</span>
                 </button>
               </div>
@@ -234,30 +271,44 @@ const OfferRide = () => {
           {/* Step 1: Route */}
           {step === 1 && (
             <div className="step-route">
-              <h2>Where are you going?</h2>
-              <p className="text-secondary text-sm">Set your origin and destination</p>
+              <h2>Where are you driving?</h2>
+              <p className="text-secondary text-sm">Set your starting point & destination (Type or pick on Map)</p>
 
               <div className="route-form mt-4">
                 {/* Origin */}
                 <div className="route-input-group">
                   <div className="route-dot origin-dot"></div>
                   <div className="route-input-wrapper">
-                    <div className="input-icon-wrapper">
-                      <Search size={16} className="input-icon" />
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="From where? (e.g. Hyderabad, Madhapur)"
-                        value={originQuery || form.originAddress}
-                        onChange={e => { setOriginQuery(e.target.value); updateForm('originAddress', e.target.value); }}
-                      />
+                    <div className="input-with-map-btn">
+                      <div className="input-icon-wrapper flex-1">
+                        <Search size={16} className="input-icon" />
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="From where? (Starting city / area)"
+                          value={originQuery || form.originAddress}
+                          onChange={e => {
+                            setOriginQuery(e.target.value);
+                            updateForm('originAddress', e.target.value);
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-pick-map-inline"
+                        onClick={() => setMapPickerTarget('origin')}
+                        title="Pick starting location on map"
+                      >
+                        <MapIcon size={16} /> Map
+                      </button>
                     </div>
-                    {searchingOrigin && <p className="search-hint">Searching places...</p>}
+
+                    {searchingOrigin && <p className="search-hint">Searching places globally...</p>}
                     {originSuggestions.length > 0 && (
                       <div className="place-dropdown">
                         {originSuggestions.map((place, idx) => (
                           <button key={idx} className="place-dropdown-item" onClick={() => selectOrigin(place)}>
-                            <MapPin size={12} color="#22c55e" />
+                            <MapPin size={14} color="#22c55e" />
                             <span>{place.display_name}</span>
                           </button>
                         ))}
@@ -272,22 +323,36 @@ const OfferRide = () => {
                 <div className="route-input-group">
                   <div className="route-dot dest-dot"></div>
                   <div className="route-input-wrapper">
-                    <div className="input-icon-wrapper">
-                      <Search size={16} className="input-icon" />
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="To where? (e.g. Bangalore, Koramangala)"
-                        value={destQuery || form.destAddress}
-                        onChange={e => { setDestQuery(e.target.value); updateForm('destAddress', e.target.value); }}
-                      />
+                    <div className="input-with-map-btn">
+                      <div className="input-icon-wrapper flex-1">
+                        <Search size={16} className="input-icon" />
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="To where? (Destination city / area)"
+                          value={destQuery || form.destAddress}
+                          onChange={e => {
+                            setDestQuery(e.target.value);
+                            updateForm('destAddress', e.target.value);
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-pick-map-inline dest-map"
+                        onClick={() => setMapPickerTarget('dest')}
+                        title="Pick destination on map"
+                      >
+                        <MapIcon size={16} /> Map
+                      </button>
                     </div>
-                    {searchingDest && <p className="search-hint">Searching places...</p>}
+
+                    {searchingDest && <p className="search-hint">Searching places globally...</p>}
                     {destSuggestions.length > 0 && (
                       <div className="place-dropdown">
                         {destSuggestions.map((place, idx) => (
                           <button key={idx} className="place-dropdown-item" onClick={() => selectDestination(place)}>
-                            <MapPin size={12} color="#ef4444" />
+                            <MapPin size={14} color="#ef4444" />
                             <span>{place.display_name}</span>
                           </button>
                         ))}
@@ -335,10 +400,10 @@ const OfferRide = () => {
               </div>
 
               <div className="input-group mt-4">
-                <label className="input-label">Additional Notes (Optional)</label>
+                <label className="input-label">Ride Description / Pickup Note (Optional)</label>
                 <textarea
                   className="input-field"
-                  placeholder="Any additional details about the ride..."
+                  placeholder="e.g. Leaving from Metro station, will take Highway, AC available..."
                   value={form.description}
                   onChange={e => updateForm('description', e.target.value)}
                   rows={3}
@@ -351,23 +416,24 @@ const OfferRide = () => {
           {/* Step 3: Seats & Price */}
           {step === 3 && (
             <div className="step-price">
-              <h2>Seats & Price</h2>
-              <p className="text-secondary text-sm">Set available seats and price per seat</p>
+              <h2>Seats & Price per Seat</h2>
+              <p className="text-secondary text-sm">Set available seats and price in your currency</p>
 
               <div className="input-group mt-4">
                 <label className="input-label">
-                  <Users size={14} className="inline-icon" /> Available Seats
+                  <Users size={14} className="inline-icon" /> Available Seats for Passengers
                 </label>
                 {form.vehicleType === 'bike' ? (
                   <div className="seats-display">
                     <span className="seat-number">1</span>
-                    <span className="text-xs text-tertiary">Pillion seat</span>
+                    <span className="text-xs text-secondary">Pillion seat (Bike)</span>
                   </div>
                 ) : (
                   <div className="seats-selector">
                     {[1, 2, 3, 4, 5, 6, 7].map(num => (
                       <button
                         key={num}
+                        type="button"
                         className={`seat-btn ${form.seatsAvailable === num ? 'active' : ''}`}
                         onClick={() => updateForm('seatsAvailable', num)}
                       >
@@ -385,16 +451,6 @@ const OfferRide = () => {
                     className="amount-currency-select"
                     value={form.currencySymbol}
                     onChange={e => updateForm('currencySymbol', e.target.value)}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      fontSize: '1.5rem',
-                      fontWeight: 700,
-                      color: 'var(--primary-color)',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      marginRight: '0.5rem'
-                    }}
                   >
                     {COUNTRIES.map(c => (
                       <option key={c.code} value={c.currencySymbol}>
@@ -419,23 +475,39 @@ const OfferRide = () => {
             </div>
           )}
 
-          {/* Step 4: Preferences */}
+          {/* Step 4: Contact & Preferences */}
           {step === 4 && (
             <div className="step-preferences">
-              <h2>Contact & Ride Preferences</h2>
-              <p className="text-secondary text-sm">Help passengers know what to expect</p>
+              <h2>Driver Contact & Preferences</h2>
+              <p className="text-secondary text-sm">Passengers will contact you regarding this ride</p>
 
-              <div className="input-group mt-4">
-                <label className="input-label">Your Phone Number</label>
-                <div className="input-icon-wrapper">
-                  <Phone size={18} className="input-icon" />
-                  <input
-                    type="tel"
-                    className="input-field"
-                    placeholder="+91 98765 43210"
-                    value={form.driverPhone}
-                    onChange={e => updateForm('driverPhone', e.target.value)}
-                  />
+              <div className="grid-2-col mt-4">
+                <div className="input-group">
+                  <label className="input-label">Your Name</label>
+                  <div className="input-icon-wrapper">
+                    <UserIcon size={18} className="input-icon" />
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Your Full Name"
+                      value={form.driverName}
+                      onChange={e => updateForm('driverName', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">Your Phone Number</label>
+                  <div className="input-icon-wrapper">
+                    <Phone size={18} className="input-icon" />
+                    <input
+                      type="tel"
+                      className="input-field"
+                      placeholder="+91 98765 43210"
+                      value={form.driverPhone}
+                      onChange={e => updateForm('driverPhone', e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -446,8 +518,8 @@ const OfferRide = () => {
                       <Wind size={20} />
                     </div>
                     <div className="pref-info">
-                      <strong>Air Conditioning</strong>
-                      <span>AC available in vehicle</span>
+                      <strong>Air Conditioning (AC)</strong>
+                      <span>AC available in car</span>
                     </div>
                     <input
                       type="checkbox"
@@ -463,7 +535,7 @@ const OfferRide = () => {
                     </div>
                     <div className="pref-info">
                       <strong>Luggage Space</strong>
-                      <span>Boot/trunk space available</span>
+                      <span>Boot/trunk luggage space</span>
                     </div>
                     <input
                       type="checkbox"
@@ -479,7 +551,7 @@ const OfferRide = () => {
                     </div>
                     <div className="pref-info">
                       <strong>Music Allowed</strong>
-                      <span>OK with playing music</span>
+                      <span>OK with music on the journey</span>
                     </div>
                     <input
                       type="checkbox"
@@ -495,7 +567,7 @@ const OfferRide = () => {
                     </div>
                     <div className="pref-info">
                       <strong>Smoking Allowed</strong>
-                      <span>Smoking permitted in vehicle</span>
+                      <span>Smoking allowed in vehicle</span>
                     </div>
                     <input
                       type="checkbox"
@@ -513,7 +585,7 @@ const OfferRide = () => {
           {step === 5 && (
             <div className="step-review">
               <h2>Review & Publish</h2>
-              <p className="text-secondary text-sm">Verify your ride details before publishing</p>
+              <p className="text-secondary text-sm">Verify your ride details before publishing to all devices</p>
 
               <div className="review-card glass-card mt-4">
                 <div className="review-row">
@@ -559,8 +631,8 @@ const OfferRide = () => {
                 <div className="review-row">
                   <Phone size={16} className="text-tertiary" />
                   <div>
-                    <span className="review-label">Contact</span>
-                    <span className="review-value">{form.driverPhone}</span>
+                    <span className="review-label">Driver Contact</span>
+                    <span className="review-value">{form.driverName} • {form.driverPhone}</span>
                   </div>
                 </div>
 
@@ -581,7 +653,7 @@ const OfferRide = () => {
         {/* Navigation Buttons */}
         <div className="post-actions">
           {step > 0 && (
-            <button className="btn btn-outline" onClick={() => setStep(step - 1)}>
+            <button className="btn btn-outline" onClick={() => setStep(step - 1)} disabled={isSubmitting}>
               <ArrowLeft size={18} />
               Back
             </button>
@@ -601,12 +673,35 @@ const OfferRide = () => {
             <button
               className="btn btn-accent btn-lg"
               onClick={handlePublish}
-              style={{ marginLeft: 'auto' }}
+              disabled={isSubmitting}
+              style={{ marginLeft: 'auto', minWidth: '180px' }}
             >
-              🚀 Publish Ride
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={18} className="spin" />
+                  Publishing...
+                </>
+              ) : (
+                '🚀 Publish Ride'
+              )}
             </button>
           )}
         </div>
+
+        {/* Map Location Picker Modal */}
+        {mapPickerTarget && (
+          <MapLocationPicker
+            isOpen={Boolean(mapPickerTarget)}
+            onClose={() => setMapPickerTarget(null)}
+            onSelectLocation={handleMapLocationSelect}
+            title={mapPickerTarget === 'origin' ? '📍 Select Starting Location (Origin)' : '🏁 Select Drop Location (Destination)'}
+            pinColor={mapPickerTarget === 'origin' ? '#22c55e' : '#ef4444'}
+            initialLat={mapPickerTarget === 'origin' ? (form.originLat || location.lat) : (form.destLat || location.lat)}
+            initialLng={mapPickerTarget === 'origin' ? (form.originLng || location.lng) : (form.destLng || location.lng)}
+            initialAddress={mapPickerTarget === 'origin' ? form.originAddress : form.destAddress}
+            showRadius={0}
+          />
+        )}
       </div>
     </div>
   );

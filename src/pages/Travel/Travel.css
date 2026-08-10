@@ -232,6 +232,59 @@
   gap: var(--space-4);
 }
 
+/* Country Selector Header */
+.search-country-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.country-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.country-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.country-dropdown {
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+}
+
+.clear-filters-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.clear-filters-btn:hover {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Route Search */
 .travel-search-route {
   display: flex;
   flex-direction: column;
@@ -242,7 +295,7 @@
 .search-input-group {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .search-dot {
@@ -294,8 +347,40 @@
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
+  font-size: 11px;
+  color: #3b82f6;
+}
+
+/* Map Pick Trigger Button */
+.map-pick-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-3) var(--space-3);
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: #16a34a;
+  border-radius: var(--radius-lg);
   font-size: var(--fs-xs);
-  color: var(--text-tertiary);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.map-pick-trigger-btn:hover {
+  background: rgba(34, 197, 94, 0.16);
+  transform: scale(1.02);
+}
+
+.map-pick-trigger-btn.dest-map-btn {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #dc2626;
+}
+
+.map-pick-trigger-btn.dest-map-btn:hover {
+  background: rgba(239, 68, 68, 0.16);
 }
 
 .search-connector-line {
@@ -306,29 +391,30 @@
   border-style: dashed;
 }
 
+/* Suggestions Dropdown */
 .place-suggestions {
   display: flex;
   flex-direction: column;
-  margin-left: 24px;
+  margin-left: 20px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
   margin-top: 4px;
   margin-bottom: 4px;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
 }
 
 .suggestion-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border: none;
   background: transparent;
   cursor: pointer;
   text-align: left;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
   transition: background var(--transition-fast);
 }
 
@@ -340,6 +426,26 @@
   border-top: 1px solid var(--border-color);
 }
 
+.suggestion-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.suggestion-text strong {
+  font-size: var(--fs-xs);
+  color: var(--text-primary);
+}
+
+.suggestion-text span {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+}
+
+/* Filters Row */
 .travel-search-filters {
   display: flex;
   flex-wrap: wrap;
@@ -347,9 +453,53 @@
   gap: var(--space-3);
 }
 
+.search-filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-tertiary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+}
+
+.travel-date-input {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  outline: none;
+}
+
+/* Radius Selector Pill */
+.radius-selector-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.radius-dropdown {
+  background: transparent;
+  border: none;
+  color: #3b82f6;
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  outline: none;
+  cursor: pointer;
+}
+
 .travel-search-btn {
   flex: 1;
-  min-width: 160px;
+  min-width: 150px;
   padding: var(--space-3) var(--space-4);
   font-size: var(--fs-sm);
   border-radius: var(--radius-lg);
@@ -363,26 +513,13 @@
   transform: translateY(-1px);
 }
 
-.search-filter-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.search-radius-notice {
+  font-size: 11px;
   color: var(--text-tertiary);
-}
-
-.travel-date-input {
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
+  text-align: center;
+  background: var(--bg-secondary);
+  padding: 4px var(--space-3);
   border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: var(--fs-xs);
-  outline: none;
-}
-
-.travel-date-input:focus {
-  border-color: #3b82f6;
 }
 
 /* Vehicle Type Toggle */
@@ -477,6 +614,12 @@
   color: var(--text-secondary);
 }
 
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
 /* My Rides */
 .travel-my-rides {
   display: flex;
@@ -501,6 +644,11 @@
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
+}
+
+.empty-tab-sub {
+  padding: var(--space-5);
+  text-align: center;
 }
 
 /* Stagger animation */
@@ -531,5 +679,14 @@
 
   .travel-hero-stats {
     gap: var(--space-4);
+  }
+
+  .travel-search-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .map-pick-trigger-btn .btn-label {
+    display: none;
   }
 }

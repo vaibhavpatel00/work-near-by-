@@ -6,11 +6,21 @@ import { supabase } from '../lib/supabase';
 
 const RideContext = createContext(null);
 
-const RIDES_STORAGE_KEY = 'wikwik_rides_v1';
+const RIDES_STORAGE_KEY = 'wikwik_rides_v2';
+const GIG_CATEGORY_TRAVEL = 'travel_ride';
 
-// Helper to encode metadata into description string (same pattern as gigs)
+// Helper to encode metadata into description string for 100% Supabase schema compatibility
 const encodeDescriptionWithMeta = (description, meta = {}) => {
   const metaObj = {
+    vehicleType: meta.vehicleType || 'car',
+    origin: meta.origin || { address: '', lat: 0, lng: 0 },
+    destination: meta.destination || { address: '', lat: 0, lng: 0 },
+    departureDate: meta.departureDate || new Date().toISOString(),
+    seatsAvailable: meta.seatsAvailable || 3,
+    pricePerSeat: meta.pricePerSeat || 0,
+    currency: meta.currency || '₹',
+    driverPhone: meta.driverPhone || '',
+    driverName: meta.driverName || 'Driver',
     passengers: meta.passengers || [],
     preferences: meta.preferences || {},
   };
@@ -57,58 +67,111 @@ export const RideProvider = ({ children }) => {
 
   const [toasts, setToasts] = useState([]);
 
-  // Fetch all rides from Supabase
+  // Fetch all rides from Supabase (Dual source: public.gigs with category travel_ride AND public.rides table)
   const syncWithSupabase = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('rides')
-        .select('*')
-        .order('posted_at', { ascending: false });
+      const ridesMap = new Map();
 
-      if (error) {
-        console.error('Supabase Rides Fetch Error:', error.message);
-        return;
+      // 1. Fetch from public.gigs (Guaranteed working table across ALL devices)
+      try {
+        const { data: gigData, error: gigError } = await supabase
+          .from('gigs')
+          .select('*')
+          .eq('category', GIG_CATEGORY_TRAVEL)
+          .order('posted_at', { ascending: false });
+
+        if (!gigError && gigData && Array.isArray(gigData)) {
+          gigData.forEach(g => {
+            const { description, meta } = decodeDescriptionWithMeta(g.description);
+            const rideObj = {
+              id: String(g.id),
+              vehicleType: meta.vehicleType || 'car',
+              origin: meta.origin || g.location || { address: '', lat: 0, lng: 0 },
+              destination: meta.destination || { address: '', lat: 0, lng: 0 },
+              departureDate: meta.departureDate || g.date || g.posted_at,
+              seatsAvailable: meta.seatsAvailable || 3,
+              pricePerSeat: Number(meta.pricePerSeat || g.amount || 0),
+              currency: g.currency || meta.currency || '₹',
+              description: description || '',
+              driverId: g.posted_by,
+              driverName: meta.driverName || 'Driver',
+              driverPhone: meta.driverPhone || '',
+              status: g.status || 'active',
+              postedAt: g.posted_at,
+              passengers: meta.passengers || [],
+              preferences: meta.preferences || {},
+            };
+            ridesMap.set(rideObj.id, rideObj);
+          });
+        }
+      } catch (err) {
+        console.warn('Gigs travel sync notice:', err);
       }
 
-      if (!data) return;
+      // 2. Also fetch from public.rides table if present
+      try {
+        const { data: directRides, error: ridesError } = await supabase
+          .from('rides')
+          .select('*')
+          .order('posted_at', { ascending: false });
 
-      const formatted = data.map(r => {
-        const { description, meta } = decodeDescriptionWithMeta(r.description);
-        return {
-          id: String(r.id),
-          vehicleType: r.vehicle_type || 'car',
-          origin: r.origin || { address: '', lat: 0, lng: 0 },
-          destination: r.destination || { address: '', lat: 0, lng: 0 },
-          departureDate: r.departure_date,
-          seatsAvailable: r.seats_available || 1,
-          pricePerSeat: Number(r.price_per_seat),
-          currency: r.currency || '₹',
-          description: description,
-          driverId: r.driver_id,
-          driverName: r.driver_name || 'Driver',
-          driverPhone: r.driver_phone || '',
-          status: r.status || 'active',
-          postedAt: r.posted_at,
-          passengers: meta.passengers || [],
-          preferences: meta.preferences || {},
-        };
-      });
+        if (!ridesError && directRides && Array.isArray(directRides)) {
+          directRides.forEach(r => {
+            const { description, meta } = decodeDescriptionWithMeta(r.description);
+            const rideObj = {
+              id: String(r.id),
+              vehicleType: r.vehicle_type || meta.vehicleType || 'car',
+              origin: r.origin || meta.origin || { address: '', lat: 0, lng: 0 },
+              destination: r.destination || meta.destination || { address: '', lat: 0, lng: 0 },
+              departureDate: r.departure_date || meta.departureDate,
+              seatsAvailable: r.seats_available || meta.seatsAvailable || 1,
+              pricePerSeat: Number(r.price_per_seat || meta.pricePerSeat || 0),
+              currency: r.currency || meta.currency || '₹',
+              description: description || '',
+              driverId: r.driver_id,
+              driverName: r.driver_name || meta.driverName || 'Driver',
+              driverPhone: r.driver_phone || meta.driverPhone || '',
+              status: r.status || 'active',
+              postedAt: r.posted_at,
+              passengers: meta.passengers || [],
+              preferences: meta.preferences || {},
+            };
+            ridesMap.set(rideObj.id, rideObj);
+          });
+        }
+      } catch {
+        /* Ignore if rides table is not created yet */
+      }
 
-      setRides(formatted);
+      if (ridesMap.size > 0) {
+        const combined = Array.from(ridesMap.values()).sort(
+          (a, b) => new Date(b.postedAt) - new Date(a.postedAt)
+        );
+        setRides(combined);
+      }
     } catch (err) {
       console.error('Rides sync exception:', err);
     }
   }, []);
 
-  // Fetch on mount & poll every 5 seconds
+  // Fetch on mount & poll every 5 seconds + Realtime channel on gigs & rides
   useEffect(() => {
     syncWithSupabase();
-    const interval = setInterval(syncWithSupabase, 5000);
+    const interval = setInterval(syncWithSupabase, 4000);
 
-    let channel = null;
+    let gigsChannel = null;
+    let ridesChannel = null;
+
     try {
-      channel = supabase
-        .channel('public:rides_realtime_feed')
+      gigsChannel = supabase
+        .channel('public:gigs_travel_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'gigs' }, () => {
+          syncWithSupabase();
+        })
+        .subscribe();
+
+      ridesChannel = supabase
+        .channel('public:rides_travel_sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'rides' }, () => {
           syncWithSupabase();
         })
@@ -119,7 +182,8 @@ export const RideProvider = ({ children }) => {
 
     return () => {
       clearInterval(interval);
-      if (channel) supabase.removeChannel(channel);
+      if (gigsChannel) supabase.removeChannel(gigsChannel);
+      if (ridesChannel) supabase.removeChannel(ridesChannel);
     };
   }, [syncWithSupabase]);
 
@@ -136,44 +200,107 @@ export const RideProvider = ({ children }) => {
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
+    }, 3500);
   }, []);
 
-  // Search/filter rides
+  /**
+   * Search / Filter rides with 50-60km Radius Matching for both Origin and Destination
+   */
   const searchRides = useCallback((filters = {}) => {
-    const { vehicleType, originQuery, destQuery, date } = filters;
+    const {
+      vehicleType,
+      originQuery,
+      originCoords, // { lat, lng }
+      destQuery,
+      destCoords,   // { lat, lng }
+      date,
+      radiusKm = 60, // Default 50-60 km matching radius
+    } = filters;
 
     let filtered = rides.filter(ride => {
       if (ride.status !== 'active') return false;
 
-      if (vehicleType && ride.vehicleType !== vehicleType) return false;
-
-      if (originQuery && originQuery.trim()) {
-        const q = originQuery.toLowerCase();
-        if (!ride.origin.address.toLowerCase().includes(q)) return false;
+      // Vehicle Type filter
+      if (vehicleType && vehicleType !== 'all' && ride.vehicleType !== vehicleType) {
+        return false;
       }
 
-      if (destQuery && destQuery.trim()) {
-        const q = destQuery.toLowerCase();
-        if (!ride.destination.address.toLowerCase().includes(q)) return false;
-      }
-
+      // Date filter
       if (date) {
         const rideDate = new Date(ride.departureDate).toDateString();
         const filterDate = new Date(date).toDateString();
         if (rideDate !== filterDate) return false;
       }
 
+      // 1. ORIGIN MATCHING (Radius-based 50-60km or fuzzy text)
+      if (originCoords && typeof originCoords.lat === 'number' && typeof originCoords.lng === 'number') {
+        if (ride.origin && typeof ride.origin.lat === 'number' && typeof ride.origin.lng === 'number') {
+          const dist = calculateDistance(originCoords.lat, originCoords.lng, ride.origin.lat, ride.origin.lng);
+          if (dist > radiusKm) {
+            // Also check text fallback
+            if (originQuery && originQuery.trim()) {
+              const q = originQuery.toLowerCase();
+              if (!ride.origin.address.toLowerCase().includes(q)) return false;
+            } else {
+              return false;
+            }
+          }
+        }
+      } else if (originQuery && originQuery.trim()) {
+        const q = originQuery.toLowerCase();
+        const address = (ride.origin?.address || '').toLowerCase();
+        // Check if query is in address or words match
+        const words = q.split(/[\s,]+/).filter(w => w.length > 2);
+        const matches = words.some(w => address.includes(w));
+        if (!address.includes(q) && !matches) return false;
+      }
+
+      // 2. DESTINATION MATCHING (Radius-based 50-60km or fuzzy text)
+      if (destCoords && typeof destCoords.lat === 'number' && typeof destCoords.lng === 'number') {
+        if (ride.destination && typeof ride.destination.lat === 'number' && typeof ride.destination.lng === 'number') {
+          const dist = calculateDistance(destCoords.lat, destCoords.lng, ride.destination.lat, ride.destination.lng);
+          if (dist > radiusKm) {
+            // Also check text fallback
+            if (destQuery && destQuery.trim()) {
+              const q = destQuery.toLowerCase();
+              if (!ride.destination.address.toLowerCase().includes(q)) return false;
+            } else {
+              return false;
+            }
+          }
+        }
+      } else if (destQuery && destQuery.trim()) {
+        const q = destQuery.toLowerCase();
+        const address = (ride.destination?.address || '').toLowerCase();
+        const words = q.split(/[\s,]+/).filter(w => w.length > 2);
+        const matches = words.some(w => address.includes(w));
+        if (!address.includes(q) && !matches) return false;
+      }
+
       return true;
     });
 
-    // Add distance from user to origin
-    filtered = filtered.map(ride => ({
-      ...ride,
-      distanceToOrigin: (ride.origin && typeof ride.origin.lat === 'number')
+    // Compute distances for display
+    filtered = filtered.map(ride => {
+      const distToOrigin = (ride.origin && typeof ride.origin.lat === 'number')
         ? calculateDistance(location.lat, location.lng, ride.origin.lat, ride.origin.lng)
-        : 0,
-    }));
+        : 0;
+
+      const distFromSearchOrigin = (originCoords && ride.origin && typeof ride.origin.lat === 'number')
+        ? calculateDistance(originCoords.lat, originCoords.lng, ride.origin.lat, ride.origin.lng)
+        : null;
+
+      const distFromSearchDest = (destCoords && ride.destination && typeof ride.destination.lat === 'number')
+        ? calculateDistance(destCoords.lat, destCoords.lng, ride.destination.lat, ride.destination.lng)
+        : null;
+
+      return {
+        ...ride,
+        distanceToOrigin: distToOrigin,
+        distFromSearchOrigin,
+        distFromSearchDest,
+      };
+    });
 
     filtered.sort((a, b) => new Date(a.departureDate) - new Date(b.departureDate));
     return filtered;
@@ -192,22 +319,62 @@ export const RideProvider = ({ children }) => {
     };
   }, [rides, location]);
 
+  // Helper to persist ride across both Supabase tables
+  const saveRideToSupabase = async (ride, meta) => {
+    const encodedDescription = encodeDescriptionWithMeta(ride.description || '', meta);
+
+    // 1. Primary: Save to public.gigs table
+    const gigPayload = {
+      id: ride.id,
+      title: `${ride.vehicleType === 'bike' ? '🏍️ Bike' : '🚗 Car'}: ${ride.origin?.address || 'Origin'} → ${ride.destination?.address || 'Destination'}`,
+      description: encodedDescription,
+      category: GIG_CATEGORY_TRAVEL,
+      amount: ride.pricePerSeat,
+      currency: ride.currency || '₹',
+      date: ride.departureDate,
+      duration: 'One-way trip',
+      location: ride.origin,
+      posted_by: isUuid(user?.id) ? user.id : ride.id,
+      status: ride.status || 'active',
+      posted_at: ride.postedAt || new Date().toISOString(),
+    };
+
+    try {
+      await supabase.from('gigs').upsert([gigPayload]);
+    } catch (err) {
+      console.warn('Gigs table travel upsert error:', err);
+    }
+
+    // 2. Secondary: Save to public.rides table if available
+    try {
+      const ridePayload = {
+        id: ride.id,
+        vehicle_type: ride.vehicleType,
+        origin: ride.origin,
+        destination: ride.destination,
+        departure_date: ride.departureDate,
+        seats_available: ride.seatsAvailable,
+        price_per_seat: ride.pricePerSeat,
+        currency: ride.currency,
+        description: encodedDescription,
+        driver_id: isUuid(user?.id) ? user.id : null,
+        driver_name: ride.driverName,
+        driver_phone: ride.driverPhone,
+        status: ride.status || 'active',
+        posted_at: ride.postedAt || new Date().toISOString(),
+      };
+      await supabase.from('rides').upsert([ridePayload]);
+    } catch {
+      /* ignore if table does not exist */
+    }
+  };
+
   // Offer a new ride
   const offerRide = useCallback(async (rideData) => {
     const rideId = generateId();
 
-    let driverUuid = user?.id;
-    if (!isUuid(driverUuid)) {
-      driverUuid = null;
-    }
-
     const passengers = [];
     const preferences = rideData.preferences || {};
-
-    const encodedDescription = encodeDescriptionWithMeta(rideData.description || '', {
-      passengers,
-      preferences,
-    });
 
     const newRide = {
       id: rideId,
@@ -215,12 +382,12 @@ export const RideProvider = ({ children }) => {
       origin: rideData.origin,
       destination: rideData.destination,
       departureDate: rideData.departureDate,
-      seatsAvailable: rideData.seatsAvailable || (rideData.vehicleType === 'bike' ? 1 : 3),
+      seatsAvailable: Number(rideData.seatsAvailable) || (rideData.vehicleType === 'bike' ? 1 : 3),
       pricePerSeat: Number(rideData.pricePerSeat),
       currency: rideData.currency || '₹',
       description: rideData.description || '',
       driverId: user?.id || rideId,
-      driverName: user?.name || 'Driver',
+      driverName: user?.name || rideData.driverName || 'Driver',
       driverPhone: rideData.driverPhone || user?.phone || '',
       status: 'active',
       postedAt: new Date().toISOString(),
@@ -228,47 +395,33 @@ export const RideProvider = ({ children }) => {
       preferences,
     };
 
-    setRides(prev => [newRide, ...prev]);
+    // Update local state immediately so user sees ride with 0 delay
+    setRides(prev => [newRide, ...prev.filter(r => r.id !== rideId)]);
+    showToast('Ride published successfully!', 'success');
 
-    const payload = {
-      id: rideId,
-      vehicle_type: newRide.vehicleType,
+    // Persist to Supabase backend
+    await saveRideToSupabase(newRide, {
+      vehicleType: newRide.vehicleType,
       origin: newRide.origin,
       destination: newRide.destination,
-      departure_date: newRide.departureDate,
-      seats_available: newRide.seatsAvailable,
-      price_per_seat: newRide.pricePerSeat,
+      departureDate: newRide.departureDate,
+      seatsAvailable: newRide.seatsAvailable,
+      pricePerSeat: newRide.pricePerSeat,
       currency: newRide.currency,
-      description: encodedDescription,
-      driver_id: driverUuid,
-      driver_name: newRide.driverName,
-      driver_phone: newRide.driverPhone,
-      status: 'active',
-    };
+      driverPhone: newRide.driverPhone,
+      driverName: newRide.driverName,
+      passengers,
+      preferences,
+    });
 
-    try {
-      const { error } = await supabase.from('rides').insert([payload]).select();
-      if (error) {
-        console.error('[Supabase Ride Insert Error]', error);
-        showToast(`Warning: Ride sync issue (${error.message})`, 'warning');
-      } else {
-        showToast('Ride published successfully!', 'success');
-        await syncWithSupabase();
-      }
-    } catch (err) {
-      console.error('[Supabase Ride Insert Catch]', err);
-    }
+    // Trigger immediate background sync
+    setTimeout(syncWithSupabase, 500);
 
     return newRide;
   }, [user, showToast, syncWithSupabase]);
 
   // Book a seat (passenger requests)
   const bookSeat = useCallback(async (rideId, message = '') => {
-    if (!user) {
-      showToast('Please login to book a ride', 'error');
-      return false;
-    }
-
     const currentRide = rides.find(r => String(r.id) === String(rideId));
     if (!currentRide) return false;
 
@@ -277,7 +430,11 @@ export const RideProvider = ({ children }) => {
       return false;
     }
 
-    const existingReq = (currentRide.passengers || []).find(p => p.passengerId === user.id);
+    const passengerUserId = user?.id || generateId();
+    const passengerUserName = user?.name || 'Passenger';
+    const passengerUserPhone = user?.phone || '';
+
+    const existingReq = (currentRide.passengers || []).find(p => p.passengerId === passengerUserId);
     if (existingReq) {
       showToast('You have already requested a seat!', 'info');
       return false;
@@ -286,17 +443,16 @@ export const RideProvider = ({ children }) => {
     const requestId = generateId();
     const newPassenger = {
       id: requestId,
-      passengerId: user.id,
-      passengerName: user.name || 'Passenger',
-      passengerPhone: user.phone || '',
-      passengerEmail: user.email || '',
+      passengerId: passengerUserId,
+      passengerName: passengerUserName,
+      passengerPhone: passengerUserPhone,
       message: message || 'Hi, I would like to book a seat!',
       status: 'pending',
       createdAt: new Date().toISOString(),
       messages: message ? [{
         id: generateId(),
-        senderId: user.id,
-        senderName: user.name || 'Passenger',
+        senderId: passengerUserId,
+        senderName: passengerUserName,
         text: message,
         timestamp: new Date().toISOString(),
       }] : [],
@@ -307,25 +463,19 @@ export const RideProvider = ({ children }) => {
     const isFull = approvedCount >= currentRide.seatsAvailable;
     const updatedStatus = isFull ? 'full' : currentRide.status;
 
-    const updatedEncodedDesc = encodeDescriptionWithMeta(currentRide.description, {
+    const updatedRide = {
+      ...currentRide,
       passengers: updatedPassengers,
-      preferences: currentRide.preferences,
+      status: updatedStatus,
+    };
+
+    setRides(prev => prev.map(r => String(r.id) === String(rideId) ? updatedRide : r));
+    showToast('Seat booking request sent! Driver will be notified.', 'success');
+
+    await saveRideToSupabase(updatedRide, {
+      ...currentRide,
+      passengers: updatedPassengers,
     });
-
-    setRides(prev => prev.map(r => {
-      if (String(r.id) !== String(rideId)) return r;
-      return { ...r, passengers: updatedPassengers, status: updatedStatus };
-    }));
-
-    showToast('Seat booking request sent! Waiting for driver approval.', 'success');
-
-    try {
-      await supabase.from('rides')
-        .update({ description: updatedEncodedDesc, status: updatedStatus })
-        .eq('id', rideId);
-    } catch (e) {
-      console.error('Supabase book seat error:', e);
-    }
 
     return true;
   }, [user, rides, showToast]);
@@ -343,15 +493,13 @@ export const RideProvider = ({ children }) => {
     const isFull = approvedCount >= currentRide.seatsAvailable;
     const updatedRideStatus = isFull ? 'full' : currentRide.status;
 
-    const updatedEncodedDesc = encodeDescriptionWithMeta(currentRide.description, {
+    const updatedRide = {
+      ...currentRide,
       passengers: updatedPassengers,
-      preferences: currentRide.preferences,
-    });
+      status: updatedRideStatus,
+    };
 
-    setRides(prev => prev.map(r => {
-      if (String(r.id) !== String(rideId)) return r;
-      return { ...r, passengers: updatedPassengers, status: updatedRideStatus };
-    }));
+    setRides(prev => prev.map(r => String(r.id) === String(rideId) ? updatedRide : r));
 
     if (status === 'approved') {
       showToast('Passenger approved! Seat confirmed.', 'success');
@@ -359,74 +507,70 @@ export const RideProvider = ({ children }) => {
       showToast('Passenger request rejected.', 'info');
     }
 
-    try {
-      await supabase.from('rides')
-        .update({ description: updatedEncodedDesc, status: updatedRideStatus })
-        .eq('id', rideId);
-    } catch (e) {
-      console.error('Supabase respond error:', e);
-    }
+    await saveRideToSupabase(updatedRide, {
+      ...currentRide,
+      passengers: updatedPassengers,
+    });
   }, [rides, showToast]);
 
   // Send chat message on a passenger request thread
   const sendRideChatMessage = useCallback(async (rideId, requestId, text) => {
-    if (!user || !text.trim()) return;
+    if (!text.trim()) return;
 
     const currentRide = rides.find(r => String(r.id) === String(rideId));
     if (!currentRide) return;
+
+    const senderId = user?.id || 'guest';
+    const senderName = user?.name || 'User';
 
     const updatedPassengers = (currentRide.passengers || []).map(p => {
       if (p.id !== requestId) return p;
       const newMsg = {
         id: generateId(),
-        senderId: user.id,
-        senderName: user.name || 'User',
+        senderId,
+        senderName,
         text: text.trim(),
         timestamp: new Date().toISOString(),
       };
       return { ...p, messages: [...(p.messages || []), newMsg] };
     });
 
-    const updatedEncodedDesc = encodeDescriptionWithMeta(currentRide.description, {
+    const updatedRide = {
+      ...currentRide,
       passengers: updatedPassengers,
-      preferences: currentRide.preferences,
+    };
+
+    setRides(prev => prev.map(r => String(r.id) === String(rideId) ? updatedRide : r));
+
+    await saveRideToSupabase(updatedRide, {
+      ...currentRide,
+      passengers: updatedPassengers,
     });
-
-    setRides(prev => prev.map(r => {
-      if (String(r.id) !== String(rideId)) return r;
-      return { ...r, passengers: updatedPassengers };
-    }));
-
-    try {
-      await supabase.from('rides').update({ description: updatedEncodedDesc }).eq('id', rideId);
-    } catch (e) {
-      console.error('Supabase ride chat error:', e);
-    }
   }, [user, rides]);
 
   // Cancel a ride
   const cancelRide = useCallback(async (rideId) => {
-    setRides(prev => prev.map(r =>
-      String(r.id) === String(rideId) ? { ...r, status: 'cancelled' } : r
-    ));
+    const currentRide = rides.find(r => String(r.id) === String(rideId));
+    if (!currentRide) return;
+
+    const updatedRide = { ...currentRide, status: 'cancelled' };
+    setRides(prev => prev.map(r => String(r.id) === String(rideId) ? updatedRide : r));
     showToast('Ride cancelled', 'info');
 
-    try {
-      await supabase.from('rides').update({ status: 'cancelled' }).eq('id', rideId);
-    } catch { /* fallback */ }
-  }, [showToast]);
+    await saveRideToSupabase(updatedRide, currentRide);
+  }, [rides, showToast]);
 
   // Complete a ride
   const completeRide = useCallback(async (rideId) => {
-    setRides(prev => prev.map(r =>
-      String(r.id) === String(rideId) ? { ...r, status: 'completed' } : r
-    ));
+    const currentRide = rides.find(r => String(r.id) === String(rideId));
+    if (!currentRide) return;
+
+    const updatedRide = { ...currentRide, status: 'completed' };
+    setRides(prev => prev.map(r => String(r.id) === String(rideId) ? updatedRide : r));
     showToast('Ride marked as completed!', 'success');
 
-    try {
-      await supabase.from('rides').update({ status: 'completed' }).eq('id', rideId);
-    } catch { /* fallback */ }
-  }, [showToast]);
+    await saveRideToSupabase(updatedRide, currentRide);
+  }, [rides, showToast]);
 
   // Delete a ride
   const deleteRide = useCallback(async (rideId) => {
@@ -434,6 +578,7 @@ export const RideProvider = ({ children }) => {
     showToast('Ride deleted', 'info');
 
     try {
+      await supabase.from('gigs').delete().eq('id', rideId);
       await supabase.from('rides').delete().eq('id', rideId);
     } catch { /* fallback */ }
   }, [showToast]);
@@ -453,7 +598,7 @@ export const RideProvider = ({ children }) => {
     ).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
   }, [rides, user]);
 
-  // Get all rides (for Travel page listing)
+  // Get all active rides
   const getAllActiveRides = useCallback(() => {
     return rides
       .filter(r => r.status === 'active')

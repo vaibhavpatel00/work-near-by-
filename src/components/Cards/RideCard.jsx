@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Users, Car, Bike, ArrowRight, Calendar } from 'lucide-react';
-import { formatDate, formatTime, formatAmount, getInitials } from '../../utils/helpers';
+import { MapPin, Clock, Users, Car, Bike, ArrowRight, Calendar, Navigation } from 'lucide-react';
+import { formatDate, formatTime, formatAmount, formatDistance, getInitials } from '../../utils/helpers';
 import './RideCard.css';
 
 const RideCard = ({ ride }) => {
@@ -28,14 +28,28 @@ const RideCard = ({ ride }) => {
       <div className="ride-route">
         <div className="ride-route-point origin">
           <div className="route-dot origin-dot"></div>
-          <span className="route-text">{ride.origin?.address || 'Origin'}</span>
+          <div className="route-point-details">
+            <span className="route-text">{ride.origin?.address || 'Origin'}</span>
+            {ride.distFromSearchOrigin !== null && ride.distFromSearchOrigin !== undefined && (
+              <span className="route-distance-tag">
+                📍 {ride.distFromSearchOrigin.toFixed(1)} km from your start
+              </span>
+            )}
+          </div>
         </div>
         <div className="ride-route-line">
           <ArrowRight size={14} className="route-arrow" />
         </div>
         <div className="ride-route-point destination">
           <div className="route-dot dest-dot"></div>
-          <span className="route-text">{ride.destination?.address || 'Destination'}</span>
+          <div className="route-point-details">
+            <span className="route-text">{ride.destination?.address || 'Destination'}</span>
+            {ride.distFromSearchDest !== null && ride.distFromSearchDest !== undefined && (
+              <span className="route-distance-tag dest-tag">
+                🏁 {ride.distFromSearchDest.toFixed(1)} km from your destination
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
