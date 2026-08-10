@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 
 const RideContext = createContext(null);
 
-const RIDES_STORAGE_KEY = 'wikwik_rides_v3';
+const RIDES_STORAGE_KEY = 'wikwik_rides_v5';
 const GIG_CATEGORY_TRAVEL = 'travel_ride';
 
 // Helper to encode metadata into description string for 100% Supabase schema compatibility
@@ -14,7 +14,7 @@ const encodeDescriptionWithMeta = (description, meta = {}) => {
   const cleanDesc = (description || '').split('\n\n__META__')[0];
   const metaObj = {
     ownerId: meta.ownerId || meta.driverId || '',
-    ownerEmail: meta.ownerEmail || meta.driverEmail || '',
+    ownerEmail: meta.ownerEmail || '',
     driverName: meta.driverName || 'Driver',
     driverPhone: meta.driverPhone || '',
     vehicleType: meta.vehicleType || 'car',
@@ -51,24 +51,41 @@ const isUuid = (str) => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
 };
 
-// Helper: Check if a user is the owner/driver of a ride
+// STRICT Helper: Check if a user is the owner/driver of a ride
 export const isRideOwner = (ride, user) => {
   if (!ride || !user) return false;
-  if (user.id && ride.ownerId && String(user.id) === String(ride.ownerId)) return true;
-  if (user.id && ride.driverId && String(user.id) === String(ride.driverId)) return true;
-  if (user.email && ride.ownerEmail && user.email.toLowerCase() === ride.ownerEmail.toLowerCase()) return true;
-  if (user.phone && ride.driverPhone && user.phone.replace(/\D/g, '') === ride.driverPhone.replace(/\D/g, '')) return true;
+
+  const userEmail = (user.email || '').trim().toLowerCase();
+  const ownerEmail = (ride.ownerEmail || '').trim().toLowerCase();
+
+  // 1. Primary check: Email match (Strict 1-to-1)
+  if (userEmail && ownerEmail) {
+    return userEmail === ownerEmail;
+  }
+
+  // 2. Secondary check: Authenticated User ID match
+  if (user.id && ride.ownerId && String(user.id) === String(ride.ownerId)) {
+    return true;
+  }
+
   return false;
 };
 
-// Helper: Get passenger's booking in a ride if exists
+// STRICT Helper: Get passenger's booking in a ride
 export const getPassengerBooking = (ride, user) => {
   if (!ride || !user || !Array.isArray(ride.passengers)) return null;
-  return ride.passengers.find(p =>
-    (user.id && p.passengerId && String(p.passengerId) === String(user.id)) ||
-    (user.email && p.passengerEmail && user.email.toLowerCase() === p.passengerEmail.toLowerCase()) ||
-    (user.phone && p.passengerPhone && user.phone.replace(/\D/g, '') === p.passengerPhone.replace(/\D/g, ''))
-  ) || null;
+
+  const userEmail = (user.email || '').trim().toLowerCase();
+  const userId = user.id ? String(user.id) : '';
+
+  return ride.passengers.find(p => {
+    const pEmail = (p.passengerEmail || '').trim().toLowerCase();
+    const pId = p.passengerId ? String(p.passengerId) : '';
+
+    if (userEmail && pEmail && userEmail === pEmail) return true;
+    if (userId && pId && userId === pId) return true;
+    return false;
+  }) || null;
 };
 
 export const RideProvider = ({ children }) => {
@@ -81,7 +98,7 @@ export const RideProvider = ({ children }) => {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.filter(r => r.status === 'active' && Boolean(r.ownerEmail));
         }
       }
     } catch { /* ignore */ }
@@ -95,19 +112,24 @@ export const RideProvider = ({ children }) => {
     try {
       const ridesMap = new Map();
 
-      // 1. Fetch from public.gigs (Guaranteed working table across ALL devices)
+      // 1. Fetch from public.gigs
       try {
         const { data: gigData, error: gigError } = await supabase
           .from('gigs')
           .select('*')
           .eq('category', GIG_CATEGORY_TRAVEL)
+          .eq('status', 'active')
           .order('posted_at', { ascending: false });
 
         if (!gigError && gigData && Array.isArray(gigData)) {
           gigData.forEach(g => {
             const { description, meta } = decodeDescriptionWithMeta(g.description);
-            const ownerId = meta.ownerId || meta.driverId || g.posted_by;
-            const ownerEmail = meta.ownerEmail || meta.driverEmail || '';
+            const ownerId = meta.ownerId || g.posted_by;
+            const ownerEmail = meta.ownerEmail || '';
+
+            // Discard corrupted legacy test rides with no owner email
+            if (!ownerEmail && !isUuid(ownerId)) return;
+
             const rideObj = {
               id: String(g.id),
               vehicleType: meta.vehicleType || 'car',
@@ -140,13 +162,17 @@ export const RideProvider = ({ children }) => {
         const { data: directRides, error: ridesError } = await supabase
           .from('rides')
           .select('*')
+          .eq('status', 'active')
           .order('posted_at', { ascending: false });
 
         if (!ridesError && directRides && Array.isArray(directRides)) {
           directRides.forEach(r => {
             const { description, meta } = decodeDescriptionWithMeta(r.description);
-            const ownerId = r.driver_id || meta.ownerId || meta.driverId;
+            const ownerId = r.driver_id || meta.ownerId;
             const ownerEmail = meta.ownerEmail || '';
+
+            if (!ownerEmail && !isUuid(ownerId)) return;
+
             const rideObj = {
               id: String(r.id),
               vehicleType: r.vehicle_type || meta.vehicleType || 'car',
@@ -171,21 +197,19 @@ export const RideProvider = ({ children }) => {
           });
         }
       } catch {
-        /* Ignore if rides table is not created yet */
+        /* Ignore if table not present */
       }
 
-      if (ridesMap.size > 0) {
-        const combined = Array.from(ridesMap.values()).sort(
-          (a, b) => new Date(b.postedAt) - new Date(a.postedAt)
-        );
-        setRides(combined);
-      }
+      const combined = Array.from(ridesMap.values()).sort(
+        (a, b) => new Date(b.postedAt) - new Date(a.postedAt)
+      );
+      setRides(combined);
     } catch (err) {
       console.error('Rides sync exception:', err);
     }
   }, []);
 
-  // Fetch on mount & poll every 3 seconds + Realtime channel on gigs & rides
+  // Fetch on mount & poll every 3 seconds + Realtime channel
   useEffect(() => {
     syncWithSupabase();
     const interval = setInterval(syncWithSupabase, 3000);
@@ -235,17 +259,17 @@ export const RideProvider = ({ children }) => {
   }, []);
 
   /**
-   * Search / Filter rides with 50-60km Radius Matching for both Origin and Destination
+   * Search / Filter rides with 50-60km Radius Matching
    */
   const searchRides = useCallback((filters = {}) => {
     const {
       vehicleType,
       originQuery,
-      originCoords, // { lat, lng }
+      originCoords,
       destQuery,
-      destCoords,   // { lat, lng }
+      destCoords,
       date,
-      radiusKm = 60, // Default 50-60 km matching radius
+      radiusKm = 60,
     } = filters;
 
     let filtered = rides.filter(ride => {
@@ -263,12 +287,11 @@ export const RideProvider = ({ children }) => {
         if (rideDate !== filterDate) return false;
       }
 
-      // 1. ORIGIN MATCHING (Radius-based 50-60km or fuzzy text)
+      // 1. ORIGIN MATCHING
       if (originCoords && typeof originCoords.lat === 'number' && typeof originCoords.lng === 'number') {
         if (ride.origin && typeof ride.origin.lat === 'number' && typeof ride.origin.lng === 'number') {
           const dist = calculateDistance(originCoords.lat, originCoords.lng, ride.origin.lat, ride.origin.lng);
           if (dist > radiusKm) {
-            // Also check text fallback
             if (originQuery && originQuery.trim()) {
               const q = originQuery.toLowerCase();
               if (!ride.origin.address.toLowerCase().includes(q)) return false;
@@ -285,12 +308,11 @@ export const RideProvider = ({ children }) => {
         if (!address.includes(q) && !matches) return false;
       }
 
-      // 2. DESTINATION MATCHING (Radius-based 50-60km or fuzzy text)
+      // 2. DESTINATION MATCHING
       if (destCoords && typeof destCoords.lat === 'number' && typeof destCoords.lng === 'number') {
         if (ride.destination && typeof ride.destination.lat === 'number' && typeof ride.destination.lng === 'number') {
           const dist = calculateDistance(destCoords.lat, destCoords.lng, ride.destination.lat, ride.destination.lng);
           if (dist > radiusKm) {
-            // Also check text fallback
             if (destQuery && destQuery.trim()) {
               const q = destQuery.toLowerCase();
               if (!ride.destination.address.toLowerCase().includes(q)) return false;
@@ -310,7 +332,6 @@ export const RideProvider = ({ children }) => {
       return true;
     });
 
-    // Compute distances for display
     filtered = filtered.map(ride => {
       const distToOrigin = (ride.origin && typeof ride.origin.lat === 'number')
         ? calculateDistance(location.lat, location.lng, ride.origin.lat, ride.origin.lng)
@@ -349,7 +370,7 @@ export const RideProvider = ({ children }) => {
     };
   }, [rides, location]);
 
-  // Helper to persist ride across both Supabase tables with PRESERVED owner/driver identity
+  // Helper to persist ride across both Supabase tables with PRESERVED owner identity
   const saveRideToSupabase = async (ride, meta) => {
     const ownerId = ride.ownerId || meta?.ownerId || (user?.id ? user.id : ride.id);
     const ownerEmail = ride.ownerEmail || meta?.ownerEmail || user?.email || '';
@@ -449,7 +470,7 @@ export const RideProvider = ({ children }) => {
     const passengers = [];
     const preferences = rideData.preferences || {};
     const ownerId = user?.id || rideId;
-    const ownerEmail = user?.email || rideData.ownerEmail || '';
+    const ownerEmail = (user?.email || rideData.ownerEmail || '').trim().toLowerCase();
     const driverName = user?.name || user?.email?.split('@')[0] || rideData.driverName || 'Driver';
     const driverPhone = rideData.driverPhone || user?.phone || '';
 
@@ -474,11 +495,9 @@ export const RideProvider = ({ children }) => {
       preferences,
     };
 
-    // Update local state immediately so user sees ride with 0 delay
     setRides(prev => [newRide, ...prev.filter(r => r.id !== rideId)]);
     showToast('Ride published successfully!', 'success');
 
-    // Persist to Supabase backend
     await saveRideToSupabase(newRide, {
       ownerId,
       ownerEmail,
@@ -496,7 +515,6 @@ export const RideProvider = ({ children }) => {
       preferences,
     });
 
-    // Trigger immediate background sync
     setTimeout(syncWithSupabase, 400);
 
     return newRide;
@@ -513,7 +531,7 @@ export const RideProvider = ({ children }) => {
     }
 
     const passengerUserId = user?.id || generateId();
-    const passengerUserEmail = user?.email || '';
+    const passengerUserEmail = (user?.email || '').trim().toLowerCase();
     const passengerUserName = user?.name || user?.email?.split('@')[0] || 'Passenger';
     const passengerUserPhone = user?.phone || '';
 
@@ -567,7 +585,6 @@ export const RideProvider = ({ children }) => {
       preferences: currentRide.preferences,
     });
 
-    // Trigger immediate background sync
     setTimeout(syncWithSupabase, 400);
 
     return true;
@@ -610,7 +627,6 @@ export const RideProvider = ({ children }) => {
       preferences: currentRide.preferences,
     });
 
-    // Trigger immediate background sync
     setTimeout(syncWithSupabase, 400);
   }, [rides, showToast, syncWithSupabase]);
 
@@ -689,14 +705,23 @@ export const RideProvider = ({ children }) => {
     } catch { /* fallback */ }
   }, [showToast]);
 
-  // Get user's offered rides (Published as Driver / Owner)
+  // Clear all rides (Utility to reset cleanly)
+  const clearAllRides = useCallback(() => {
+    setRides([]);
+    try {
+      localStorage.removeItem(RIDES_STORAGE_KEY);
+    } catch { /* ignore */ }
+    showToast('All rides cleared. You can now post fresh rides!', 'success');
+  }, [showToast]);
+
+  // Get user's offered rides (Strictly by Owner Email / ID)
   const getMyOfferedRides = useCallback(() => {
     if (!user) return [];
     return rides.filter(r => isRideOwner(r, user))
       .sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
   }, [rides, user]);
 
-  // Get user's booked rides (As Passenger / Customer)
+  // Get user's booked rides (Strictly by Passenger Email / ID)
   const getMyBookedRides = useCallback(() => {
     if (!user) return [];
     return rides.filter(r => Boolean(getPassengerBooking(r, user)))
@@ -730,6 +755,7 @@ export const RideProvider = ({ children }) => {
       cancelRide,
       completeRide,
       deleteRide,
+      clearAllRides,
       getMyOfferedRides,
       getMyBookedRides,
       getAllActiveRides,
