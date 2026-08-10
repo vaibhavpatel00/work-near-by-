@@ -94,18 +94,13 @@ const WorkerDetail = () => {
                 <span>{worker.customProfession || category?.name || worker.profession}</span>
               </div>
 
-              <div className="worker-rating-row mt-2">
-                <div className="rating-tag">
-                  <Star size={13} className="star-icon" />
-                  <strong>{worker.rating || '4.9'}</strong>
-                  <span>({worker.reviewsCount || 8} reviews)</span>
-                </div>
-                {worker.experience && (
+              {worker.experience && (
+                <div className="worker-rating-row mt-2">
                   <span className="experience-tag">
                     <Award size={13} /> {worker.experience}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 

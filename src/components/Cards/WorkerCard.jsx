@@ -41,12 +41,6 @@ const WorkerCard = ({ worker }) => {
             <span>{worker.customProfession || category?.name || worker.profession}</span>
           </div>
         </div>
-
-        <div className="worker-rating-badge">
-          <Star size={12} className="star-icon" />
-          <span>{worker.rating || '4.9'}</span>
-          <small>({worker.reviewsCount || 5})</small>
-        </div>
       </div>
 
       <p className="worker-card-bio">{worker.description || 'Specialist available for all repair and installation services.'}</p>
