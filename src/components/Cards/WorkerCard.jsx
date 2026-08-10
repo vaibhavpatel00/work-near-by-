@@ -1,18 +1,14 @@
 import { Link } from 'react-router-dom';
 import { 
-  Phone, MessageSquare, MapPin, Clock, Star, 
-  ShieldCheck, Zap, Wrench, CheckCircle, ArrowRight, Award, AlertCircle
+  MapPin, Clock, ShieldCheck, Wrench, ArrowRight, Zap
 } from 'lucide-react';
 import { getCategoryById } from '../../data/categories';
-import { formatDistance, formatAmount, getInitials } from '../../utils/helpers';
+import { formatDistance, getInitials } from '../../utils/helpers';
 import './WorkerCard.css';
 
 const WorkerCard = ({ worker }) => {
   const category = getCategoryById(worker.profession);
   const CategoryIcon = category?.icon || Wrench;
-
-  const rawPhone = (worker.phone || '').replace(/\D/g, '');
-  const rawWhatsApp = (worker.whatsapp || worker.phone || '').replace(/\D/g, '');
 
   return (
     <div className={`worker-card glass-card ${category?.cssClass || ''}`}>
@@ -22,7 +18,7 @@ const WorkerCard = ({ worker }) => {
             {getInitials(worker.name)}
           </div>
           {worker.emergencyAvailable && (
-            <span className="emergency-indicator-dot" title="24/7 Emergency Available"></span>
+            <span className="emergency-indicator-dot" title="Emergency Available"></span>
           )}
         </div>
 
@@ -62,48 +58,14 @@ const WorkerCard = ({ worker }) => {
       </div>
 
       <div className="worker-card-footer">
-        <div className="worker-rate-box">
-          {worker.rate && Number(worker.rate) > 0 ? (
-            <>
-              <span className="rate-num">
-                {formatAmount(worker.rate, worker.currency || '₹')}
-              </span>
-              <span className="rate-unit">/{worker.rateUnit || 'visit'}</span>
-            </>
-          ) : (
-            <span className="rate-contact-tag">
-              📞 Direct Contact
-            </span>
-          )}
+        <div className="worker-status-badge">
+          <span className="status-live-dot"></span>
+          <span className="status-text">{worker.workingDays || 'Available'}</span>
         </div>
 
-        <div className="worker-actions-row">
-          {worker.phone && (
-            <a 
-              href={`tel:${worker.phone}`} 
-              className="btn btn-outline btn-sm worker-call-btn"
-              title="Call Worker directly"
-            >
-              <Phone size={14} /> Call
-            </a>
-          )}
-
-          {(worker.whatsapp || worker.phone) && (
-            <a 
-              href={`https://wa.me/${rawWhatsApp}`} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="btn btn-outline btn-sm worker-whatsapp-btn"
-              title="Chat on WhatsApp"
-            >
-              <MessageSquare size={14} /> WhatsApp
-            </a>
-          )}
-
-          <Link to={`/worker/${worker.id}`} className="btn btn-primary btn-sm">
-            View <ArrowRight size={13} />
-          </Link>
-        </div>
+        <Link to={`/worker/${worker.id}`} className="btn btn-primary btn-sm view-profile-btn">
+          View Profile & Contact <ArrowRight size={14} />
+        </Link>
       </div>
     </div>
   );
