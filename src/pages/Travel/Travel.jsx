@@ -31,7 +31,7 @@ const Travel = () => {
     }
     setSearching(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data);
