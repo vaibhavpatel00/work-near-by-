@@ -233,6 +233,17 @@ const Travel = () => {
                     min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
+
+                <button 
+                  className="btn btn-primary travel-search-btn"
+                  onClick={() => {
+                    setOriginSuggestions([]);
+                    setDestSuggestions([]);
+                  }}
+                >
+                  <Search size={18} />
+                  Search Rides
+                </button>
               </div>
             </section>
 
