@@ -103,7 +103,7 @@ const RideDetail = () => {
                 className="btn btn-ghost btn-sm text-error" 
                 onClick={() => setShowDeleteModal(true)}
               >
-                <Trash2 size={16} /> Delete Ride
+                <Trash2 size={16} /> Delete
               </button>
             )}
             <div className={`ride-type-badge ${ride.vehicleType}`}>
@@ -117,10 +117,10 @@ const RideDetail = () => {
         {isOwner && (
           <div className="owner-role-banner animate-fade-in">
             <div className="owner-banner-content">
-              <Crown size={20} className="owner-crown-icon" />
+              <Crown size={22} className="owner-crown-icon" />
               <div>
                 <strong>👑 You are the Owner of this Ride</strong>
-                <p>Manage passenger bookings, approve applicants, and chat with riders.</p>
+                <p>Published with {ride.ownerEmail || user?.email}. Manage bookings and approve passenger seat requests below.</p>
               </div>
             </div>
           </div>
@@ -385,6 +385,76 @@ const RideDetail = () => {
           </section>
         )}
 
+        {/* OWNER VIEW: Dedicated Ride Management Actions Card */}
+        {isOwner && (
+          <section className="detail-section owner-controls-section glass-card animate-fade-in-up">
+            <h3>👑 Ride Management Actions</h3>
+            <p className="text-xs text-secondary">
+              Update your ride status when completed, or cancel if your schedule changes.
+            </p>
+
+            <div className="owner-controls-grid mt-3">
+              {(ride.status === 'active' || ride.status === 'full') && (
+                <button className="btn btn-accent btn-block" onClick={() => completeRide(ride.id)}>
+                  <CheckCircle size={18} />
+                  Mark as Completed
+                </button>
+              )}
+
+              {ride.status === 'active' && (
+                <button className="btn btn-outline btn-block text-error" onClick={() => cancelRide(ride.id)}>
+                  <AlertTriangle size={18} />
+                  Cancel Ride
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Completed or Cancelled Status Banner Card */}
+        {ride.status === 'completed' && (
+          <div className="status-notice-card completed glass-card animate-fade-in">
+            <CheckCircle size={22} className="text-success" />
+            <div>
+              <strong>This ride has been completed</strong>
+              <p className="text-xs text-secondary">The journey is finished. Thank you for using Wikwik Travel.</p>
+            </div>
+          </div>
+        )}
+
+        {ride.status === 'cancelled' && (
+          <div className="status-notice-card cancelled glass-card animate-fade-in">
+            <AlertTriangle size={22} className="text-error" />
+            <div>
+              <strong>This ride was cancelled by the owner</strong>
+              <p className="text-xs text-secondary">This ride is no longer active.</p>
+            </div>
+          </div>
+        )}
+
+        {/* CUSTOMER VIEW: Book a Seat Bar (Inline in flow) */}
+        {!isOwner && !myBooking && ride.status === 'active' && (
+          <div className="passenger-book-section glass-card animate-fade-in-up">
+            <div className="book-section-content">
+              <div>
+                <span className="text-xs text-secondary">Price per seat</span>
+                <div className="book-price-text">{formatAmount(ride.pricePerSeat, ride.currency || '₹')}</div>
+              </div>
+
+              {!isFull ? (
+                <button className="btn btn-primary btn-lg" onClick={() => setShowBookModal(true)}>
+                  <CheckCircle size={18} />
+                  Book a Seat
+                </button>
+              ) : (
+                <button className="btn btn-outline btn-lg" disabled>
+                  All Seats Booked
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Customer Book Modal */}
         {showBookModal && (
           <div className="apply-modal-overlay animate-fade-in">
@@ -443,49 +513,6 @@ const RideDetail = () => {
             </div>
           </div>
         )}
-
-        {/* Footer Actions */}
-        <div className="detail-action-bar">
-          {/* Non-owner customer without booking */}
-          {ride.status === 'active' && !isOwner && !myBooking && !isFull && (
-            <button className="btn btn-primary btn-lg btn-block" onClick={() => setShowBookModal(true)}>
-              <CheckCircle size={20} />
-              Book a Seat ({formatAmount(ride.pricePerSeat, ride.currency || '₹')})
-            </button>
-          )}
-
-          {/* Full ride for non-booked customer */}
-          {!isOwner && !myBooking && isFull && (
-            <button className="btn btn-outline btn-lg btn-block" disabled>
-              All Seats Booked
-            </button>
-          )}
-
-          {/* Owner controls */}
-          {isOwner && (
-            <div className="owner-action-buttons">
-              {ride.status === 'active' && (
-                <button className="btn btn-outline btn-block text-error" onClick={() => cancelRide(ride.id)}>
-                  <AlertTriangle size={18} />
-                  Cancel Ride
-                </button>
-              )}
-              {(ride.status === 'active' || ride.status === 'full') && (
-                <button className="btn btn-accent btn-lg btn-block mt-2" onClick={() => completeRide(ride.id)}>
-                  <CheckCircle size={20} />
-                  Mark as Completed
-                </button>
-              )}
-            </div>
-          )}
-
-          {ride.status === 'completed' && (
-            <div className="completed-badge-bar">
-              <CheckCircle size={20} className="text-success" />
-              <span>This ride has been completed</span>
-            </div>
-          )}
-        </div>
 
         {/* Chat Drawer */}
         {updatedActiveChatReq && (

@@ -9,7 +9,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding-bottom: calc(var(--bottom-nav-height) + var(--space-8));
+  padding-bottom: calc(var(--bottom-nav-height, 64px) + var(--space-6));
 }
 
 /* Topbar */
@@ -422,39 +422,66 @@
   padding: var(--space-6) var(--space-4);
 }
 
-/* Footer Action Bar */
-.detail-action-bar {
-  position: fixed;
-  bottom: calc(var(--bottom-nav-height) + 12px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - var(--space-6));
-  max-width: var(--max-width);
-  z-index: 50;
+/* Owner Controls Section (In Normal Document Flow at Bottom) */
+.owner-controls-section {
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+}
+
+.owner-controls-grid {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
-.owner-action-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: 100%;
-}
-
-.completed-badge-bar {
+/* Status Notice Cards */
+.status-notice-card {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  gap: var(--space-3);
+  padding: var(--space-4);
   border-radius: var(--radius-xl);
+}
+
+.status-notice-card.completed {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.25);
   color: #16a34a;
-  font-weight: 700;
+}
+
+.status-notice-card.cancelled {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+}
+
+.status-notice-card strong {
+  display: block;
   font-size: var(--fs-sm);
+  font-weight: 700;
+}
+
+/* Passenger Book Section (In Document Flow) */
+.passenger-book-section {
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  border: 2px solid rgba(59, 130, 246, 0.25);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, rgba(99, 102, 241, 0.06) 100%);
+}
+
+.book-section-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.book-price-text {
+  font-family: var(--font-heading);
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  color: #3b82f6;
 }
 
 /* Modal */
@@ -495,5 +522,10 @@
 
   .route-location h3 {
     font-size: var(--fs-base);
+  }
+
+  .book-section-content {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
