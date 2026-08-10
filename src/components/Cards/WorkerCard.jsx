@@ -69,10 +69,18 @@ const WorkerCard = ({ worker }) => {
 
       <div className="worker-card-footer">
         <div className="worker-rate-box">
-          <span className="rate-num">
-            {formatAmount(worker.rate, worker.currency || '₹')}
-          </span>
-          <span className="rate-unit">/{worker.rateUnit || 'visit'}</span>
+          {worker.rate && Number(worker.rate) > 0 ? (
+            <>
+              <span className="rate-num">
+                {formatAmount(worker.rate, worker.currency || '₹')}
+              </span>
+              <span className="rate-unit">/{worker.rateUnit || 'visit'}</span>
+            </>
+          ) : (
+            <span className="rate-contact-tag">
+              📞 Direct Contact
+            </span>
+          )}
         </div>
 
         <div className="worker-actions-row">

@@ -145,11 +145,17 @@ const WorkerDetail = () => {
               <DollarSign size={20} />
             </div>
             <div>
-              <span className="grid-label">Visiting / Starting Rate</span>
-              <strong className="grid-value rate">
-                {formatAmount(worker.rate, worker.currency || '₹')}
-                <small className="unit">/{worker.rateUnit || 'visit'}</small>
-              </strong>
+              <span className="grid-label">Pricing / Charges</span>
+              {worker.rate && Number(worker.rate) > 0 ? (
+                <strong className="grid-value rate">
+                  {formatAmount(worker.rate, worker.currency || '₹')}
+                  <small className="unit">/{worker.rateUnit || 'visit'}</small>
+                </strong>
+              ) : (
+                <strong className="grid-value text-accent">
+                  Contact Directly for Quote
+                </strong>
+              )}
             </div>
           </div>
 

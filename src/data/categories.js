@@ -1,17 +1,18 @@
 import {
   Car, ChefHat, Shield, Store, Sparkles, Zap, Wrench,
   BookOpen, Truck, PartyPopper, Hammer, Scissors, Camera, 
-  PawPrint, Leaf, Briefcase, Bike, Paintbrush, Airplay, Disc
+  PawPrint, Leaf, Briefcase, Bike, Paintbrush, Airplay, Droplets
 } from 'lucide-react';
 
 export const CATEGORIES = [
   { id: 'electrician', name: 'Electrician', icon: Zap, emoji: '⚡', cssClass: 'cat-electrician' },
   { id: 'mechanic', name: 'Bike & Auto Mechanic', icon: Wrench, emoji: '🔧', cssClass: 'cat-mechanic' },
   { id: 'plumber', name: 'Plumber', icon: Wrench, emoji: '🚰', cssClass: 'cat-plumber' },
+  { id: 'water_filter', name: 'RO Water Purifier & Filter', icon: Droplets, emoji: '💧', cssClass: 'cat-water' },
+  { id: 'ac_repair', name: 'AC & Appliance Repair', icon: Airplay, emoji: '❄️', cssClass: 'cat-ac' },
   { id: 'driver', name: 'Driver', icon: Car, emoji: '🚗', cssClass: 'cat-driver' },
   { id: 'carpenter', name: 'Carpenter', icon: Hammer, emoji: '🪚', cssClass: 'cat-carpenter' },
   { id: 'painter', name: 'Painter', icon: Paintbrush, emoji: '🎨', cssClass: 'cat-painter' },
-  { id: 'ac_repair', name: 'AC & Appliance Repair', icon: Airplay, emoji: '❄️', cssClass: 'cat-ac' },
   { id: 'cleaner', name: 'Cleaner', icon: Sparkles, emoji: '🧹', cssClass: 'cat-cleaner' },
   { id: 'chef', name: 'Chef / Cook', icon: ChefHat, emoji: '👨‍🍳', cssClass: 'cat-chef' },
   { id: 'security', name: 'Security Guard', icon: Shield, emoji: '🛡️', cssClass: 'cat-security' },
