@@ -1,13 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, TrendingUp, Users, Wrench, Zap, Plus, 
-  MapPin, SlidersHorizontal, ArrowRight, ShieldCheck, Sparkles, Filter
+  MapPin, SlidersHorizontal, ArrowRight, ShieldCheck, Sparkles, Filter, Lightbulb, X
 } from 'lucide-react';
 import { CATEGORIES } from '../../data/categories';
 import { useGigs } from '../../context/GigContext';
 import { useWorkers } from '../../context/WorkerContext';
 import { useLocation } from '../../context/LocationContext';
+import { fuzzyMatchText, CATEGORY_KEYWORDS } from '../../utils/helpers';
 import GigCard from '../../components/Cards/GigCard';
 import WorkerCard from '../../components/Cards/WorkerCard';
 import './Explore.css';
@@ -21,15 +22,67 @@ const Explore = () => {
   const [activeTab, setActiveTab] = useState('workers'); // 'workers' | 'categories'
   const [search, setSearch] = useState('');
   const [selectedProfession, setSelectedProfession] = useState('all');
-  const [radiusFilter, setRadiusFilter] = useState(50); // 50 km radius default
+  const [radiusFilter, setRadiusFilter] = useState(100); // 100 km radius default
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+
+  const searchBoxRef = useRef(null);
+
+  // Close search suggestions on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) {
+        setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  // 1. Smart Category & Worker Search Suggestions with Spell Correction
+  const searchSuggestions = useMemo(() => {
+    if (!search.trim() || search.trim().length < 2) {
+      return { matchedCategories: [], matchedWorkers: [], didYouMean: null };
+    }
+
+    const q = search.trim().toLowerCase();
+
+    // A. Match Categories by name, id, or synonyms/keywords
+    const matchedCategories = CATEGORIES.filter(cat => {
+      if (fuzzyMatchText(q, cat.name) || fuzzyMatchText(q, cat.id)) return true;
+      const keywords = CATEGORY_KEYWORDS[cat.id] || [];
+      return keywords.some(k => fuzzyMatchText(q, k));
+    });
+
+    // B. Match Workers by Name, Shop Name, Area, or Custom Profession
+    const allWorkers = getNearbyWorkers({ radiusKm: 999 });
+    const matchedWorkers = allWorkers.filter(w => {
+      return (
+        fuzzyMatchText(q, w.name) ||
+        fuzzyMatchText(q, w.livingArea) ||
+        fuzzyMatchText(q, w.customProfession) ||
+        fuzzyMatchText(q, w.description)
+      );
+    }).slice(0, 5);
+
+    // C. Did You Mean Spell Suggestion
+    let didYouMean = null;
+    if (matchedCategories.length > 0) {
+      const topCat = matchedCategories[0];
+      if (topCat.name.toLowerCase() !== q) {
+        didYouMean = topCat;
+      }
+    }
+
+    return { matchedCategories, matchedWorkers, didYouMean };
+  }, [search, getNearbyWorkers]);
 
   // Search filtered categories for category tab
   const filteredCategories = useMemo(() => {
     if (!search.trim()) return CATEGORIES;
     return CATEGORIES.filter(c => 
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.id.toLowerCase().includes(search.toLowerCase())
+      fuzzyMatchText(search, c.name) ||
+      fuzzyMatchText(search, c.id)
     );
   }, [search]);
 
@@ -46,6 +99,24 @@ const Explore = () => {
   const categoryGigs = selectedCategory
     ? getNearbyGigs(selectedCategory).filter(g => g.status === 'active')
     : [];
+
+  const handleSelectCategorySuggestion = (cat) => {
+    setSelectedProfession(cat.id);
+    setSearch('');
+    setShowSearchDropdown(false);
+    setActiveTab('workers');
+  };
+
+  const handleSelectWorkerSuggestion = (worker) => {
+    setShowSearchDropdown(false);
+    navigate(`/worker/${worker.id}`);
+  };
+
+  const handleApplyDidYouMean = (cat) => {
+    setSelectedProfession(cat.id);
+    setSearch(cat.name);
+    setShowSearchDropdown(false);
+  };
 
   return (
     <div className="page-content">
@@ -81,21 +152,115 @@ const Explore = () => {
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="explore-search animate-fade-in-up">
-          <div className="input-icon-wrapper">
-            <Search size={18} className="input-icon" />
-            <input
-              type="text"
-              className="input-field"
-              placeholder={activeTab === 'workers' 
-                ? "Search workers by skill, name, or area (e.g. Electrician, Bike Mechanic, Ramesh, Kondapur...)"
-                : "Search work categories..."
-              }
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+        {/* Smart Search Bar Container */}
+        <div className="explore-search animate-fade-in-up" ref={searchBoxRef}>
+          <div className="search-bar-container">
+            <div className="input-icon-wrapper">
+              <Search size={18} className="input-icon" />
+              <input
+                type="text"
+                className="input-field"
+                placeholder={activeTab === 'workers' 
+                  ? "Search by worker name, shop name, or skill (e.g. Electrician, Siri Chandana, Madhapur...)"
+                  : "Search work categories..."
+                }
+                value={search}
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setShowSearchDropdown(true);
+                }}
+                onFocus={() => setShowSearchDropdown(true)}
+              />
+              {search && (
+                <button 
+                  type="button"
+                  className="clear-search-btn"
+                  onClick={() => {
+                    setSearch('');
+                    setShowSearchDropdown(false);
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Smart Search Dropdown */}
+            {showSearchDropdown && search.trim().length >= 2 && (
+              <div className="smart-search-dropdown glass-card animate-fade-in">
+                {/* 1. Category Matches */}
+                {searchSuggestions.matchedCategories.length > 0 && (
+                  <div className="suggestion-section">
+                    <div className="suggestion-section-title">
+                      <Zap size={13} className="text-accent" /> Categories / Trades
+                    </div>
+                    {searchSuggestions.matchedCategories.slice(0, 4).map(cat => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        className="suggestion-item category-item"
+                        onClick={() => handleSelectCategorySuggestion(cat)}
+                      >
+                        <span className="sugg-icon">{cat.emoji}</span>
+                        <div className="sugg-info">
+                          <strong>{cat.name}</strong>
+                          <span className="sugg-sub">Auto-filter workers</span>
+                        </div>
+                        <span className="sugg-action">Select Category →</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* 2. Worker / Shop Matches */}
+                {searchSuggestions.matchedWorkers.length > 0 && (
+                  <div className="suggestion-section mt-2">
+                    <div className="suggestion-section-title">
+                      <Users size={13} className="text-primary" /> Verified Workers & Local Shops
+                    </div>
+                    {searchSuggestions.matchedWorkers.map(w => (
+                      <button
+                        key={w.id}
+                        type="button"
+                        className="suggestion-item worker-item"
+                        onClick={() => handleSelectWorkerSuggestion(w)}
+                      >
+                        <span className="sugg-icon">👷</span>
+                        <div className="sugg-info">
+                          <strong>{w.name}</strong>
+                          <span className="sugg-sub">{w.customProfession || w.profession} • 📍 {w.livingArea}</span>
+                        </div>
+                        <span className="sugg-action">View Profile →</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty Suggestions */}
+                {searchSuggestions.matchedCategories.length === 0 && searchSuggestions.matchedWorkers.length === 0 && (
+                  <div className="suggestion-empty">
+                    <span>No exact match for "{search}"</span>
+                    <p className="text-xs text-tertiary">Searching all workers with fuzzy matching...</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Spell Correction / Did You Mean Banner */}
+          {searchSuggestions.didYouMean && search.trim() && (
+            <div className="did-you-mean-banner animate-fade-in mt-2">
+              <Lightbulb size={14} className="text-warning" />
+              <span>Did you mean:</span>
+              <button 
+                type="button" 
+                className="did-you-mean-btn"
+                onClick={() => handleApplyDidYouMean(searchSuggestions.didYouMean)}
+              >
+                {searchSuggestions.didYouMean.emoji} {searchSuggestions.didYouMean.name}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* TAB 1: FIND WORKERS NEARBY */}
@@ -132,8 +297,8 @@ const Explore = () => {
                 >
                   <option value={10}>10 km</option>
                   <option value={25}>25 km</option>
-                  <option value={50}>50 km (Nearby)</option>
-                  <option value={100}>100 km</option>
+                  <option value={50}>50 km</option>
+                  <option value={100}>100 km (Default)</option>
                   <option value={999}>All Distances</option>
                 </select>
               </div>

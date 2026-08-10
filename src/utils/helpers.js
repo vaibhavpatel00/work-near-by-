@@ -111,6 +111,82 @@ export const getInitials = (name) => {
  * Truncate text
  */
 export const truncateText = (text, maxLen = 80) => {
+  if (!text) return '';
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen).trim() + '…';
+};
+
+/**
+ * Levenshtein distance for typo tolerance & fuzzy search
+ */
+export const getLevenshteinDistance = (a, b) => {
+  const an = a ? a.length : 0;
+  const bn = b ? b.length : 0;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix = [];
+  for (let i = 0; i <= bn; i++) matrix[i] = [i];
+  for (let j = 0; j <= an; j++) matrix[0][j] = j;
+  for (let i = 1; i <= bn; i++) {
+    for (let j = 1; j <= an; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  return matrix[bn][an];
+};
+
+/**
+ * Common Category Keywords & Typo-tolerance Map
+ */
+export const CATEGORY_KEYWORDS = {
+  electrician: ['electrician', 'electric', 'elctric', 'elctrician', 'electrisian', 'light', 'fan', 'wiring', 'switch', 'inverter', 'mcb', 'geyser', 'bijli', 'power', 'current', 'wire', 'short circuit'],
+  mechanic: ['mechanic', 'mchanic', 'mecanic', 'mekanik', 'bike', 'motorcycle', 'scooter', 'scooty', 'puncture', 'panchar', 'garage', 'servicing', 'oil change', 'brake', 'engine', 'two wheeler', '2 wheeler', 'royal enfield', 'yamaha', 'honda'],
+  plumber: ['plumber', 'plumbr', 'plamber', 'plumb', 'pipe', 'tap', 'leak', 'leakage', 'bathroom', 'sanitary', 'drain', 'drainage', 'toilet', 'flush', 'water tank', 'basin', 'sink'],
+  water_filter: ['water', 'filter', 'water filter', 'watar', 'filtr', 'purifier', 'purifir', 'ro', 'aquaguard', 'kent', 'pureit', 'livpure', 'tds', 'candle', 'membrane', 'drinking water'],
+  ac_repair: ['ac', 'air conditioner', 'ac repair', 'cooling', 'fridge', 'refrigerator', 'compressor', 'gas filling', 'hvac', 'deep clean', 'jet pump'],
+  driver: ['driver', 'drivr', 'drivar', 'driving', 'car', 'acting driver', 'cab', 'chauffeur', 'carpool', 'bike pool', 'travel', 'ride'],
+  carpenter: ['carpenter', 'carpentr', 'karpenter', 'wood', 'furniture', 'door', 'lock', 'bed', 'wardrobe', 'drawer', 'kitchen', 'hinges', 'wood work'],
+  painter: ['painter', 'paintr', 'pentar', 'paint', 'painting', 'wall', 'color', 'distemper', 'texture', 'waterproof', 'white wash'],
+  cleaner: ['cleaner', 'clean', 'cleaning', 'maid', 'house keeping', 'deep clean', 'sweep', 'mopping', 'housekeeping'],
+  chef: ['cook', 'chef', 'cooking', 'rasoi', 'food', 'caterer', 'kitchen', 'khana'],
+  tutor: ['tutor', 'teacher', 'tuition', 'study', 'maths', 'science', 'english', 'teaching'],
+  beautician: ['beauty', 'beautician', 'salon', 'makeup', 'parlour', 'haircut', 'facial', 'massage'],
+};
+
+/**
+ * Check if query matches a keyword or category fuzzily
+ */
+export const fuzzyMatchText = (query, targetText) => {
+  if (!query || !targetText) return false;
+  const q = query.toLowerCase().trim();
+  const t = targetText.toLowerCase().trim();
+
+  // Direct substring match
+  if (t.includes(q)) return true;
+
+  // Word-by-word prefix or substring match
+  const qWords = q.split(/\s+/);
+  const tWords = t.split(/\s+/);
+
+  for (const qWord of qWords) {
+    if (qWord.length < 3) continue;
+    for (const tWord of tWords) {
+      if (tWord.startsWith(qWord) || tWord.includes(qWord)) return true;
+      // If words are similar in length, check Levenshtein distance
+      if (Math.abs(tWord.length - qWord.length) <= 2) {
+        const dist = getLevenshteinDistance(qWord, tWord);
+        if (dist <= 2) return true;
+      }
+    }
+  }
+
+  return false;
 };
