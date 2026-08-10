@@ -1,0 +1,232 @@
+/* ============================================
+   WorkerDetail — Page Styles
+   ============================================ */
+
+.worker-detail-page {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: calc(var(--bottom-nav-height, 64px) + var(--space-6));
+}
+
+.worker-detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.worker-profile-hero {
+  padding: var(--space-5);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.worker-hero-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.worker-hero-info {
+  flex: 1;
+}
+
+.worker-hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.worker-hero-title-row h2 {
+  font-family: var(--font-heading);
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  margin: 0;
+}
+
+.worker-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.worker-rating-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.rating-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: #d97706;
+}
+
+.experience-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.worker-hero-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.btn-call {
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-whatsapp {
+  color: #16a34a;
+  border-color: rgba(34, 197, 94, 0.3);
+  font-weight: 600;
+}
+
+.btn-whatsapp:hover {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.btn-inapp-chat {
+  font-weight: 600;
+}
+
+/* Info Grid */
+.worker-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.worker-grid-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--bg-card);
+}
+
+.card-icon-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-icon-circle.accent { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.card-icon-circle.secondary { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+.card-icon-circle.success { background: rgba(34, 197, 94, 0.1); color: #16a34a; }
+
+.grid-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.grid-value {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.grid-value.rate {
+  font-size: var(--fs-lg);
+  color: #16a34a;
+}
+
+.grid-value.rate .unit {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.grid-subtext {
+  display: block;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* Sections */
+.worker-section-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.worker-section-card h3 {
+  font-family: var(--font-heading);
+  font-size: var(--fs-base);
+  font-weight: 700;
+  margin: 0;
+}
+
+.worker-full-desc {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.emergency-callout-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #b45309;
+}
+
+.emergency-callout-banner strong {
+  font-size: var(--fs-sm);
+  display: block;
+}
+
+.worker-safety-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-xl);
+  background: rgba(59, 130, 246, 0.04);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+@media (max-width: 640px) {
+  .worker-hero-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .worker-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

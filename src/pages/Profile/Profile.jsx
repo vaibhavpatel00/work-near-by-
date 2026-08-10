@@ -5,7 +5,7 @@ import { getInitials, formatAmount } from '../../utils/helpers';
 import { COUNTRIES, getCountryByCode } from '../../data/countries';
 import {
   User, Phone, Mail, FileText, Star, LogOut, Check, ShieldCheck,
-  Settings, ChevronRight, HelpCircle, Bell, Lock, CreditCard, Globe
+  Settings, ChevronRight, HelpCircle, Bell, Lock, CreditCard, Globe, Wrench
 } from 'lucide-react';
 import './Profile.css';
 
@@ -113,6 +113,26 @@ const Profile = () => {
               <span className="p-stat-num">{formatAmount(user.totalEarned || 0, userCountry.currencySymbol)}</span>
               <span className="p-stat-label">Earned</span>
             </div>
+          </div>
+        </section>
+
+        {/* Worker Profile Card */}
+        <section className="profile-details glass-card animate-fade-in-up" style={{ borderLeft: '4px solid #3b82f6' }}>
+          <div className="section-title-bar">
+            <div>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Wrench size={18} className="text-accent" /> Professional Worker Profile
+              </h3>
+              <p className="text-xs text-secondary mt-1">
+                List your contact details, working hours, and living area to get hired by people nearby.
+              </p>
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => navigate('/register-worker')}
+            >
+              Manage Services
+            </button>
           </div>
         </section>
 
