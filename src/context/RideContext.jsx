@@ -12,6 +12,9 @@ const GIG_CATEGORY_TRAVEL = 'travel_ride';
 // Helper to encode metadata into description string for 100% Supabase schema compatibility
 const encodeDescriptionWithMeta = (description, meta = {}) => {
   const metaObj = {
+    driverId: meta.driverId || '',
+    driverName: meta.driverName || 'Driver',
+    driverPhone: meta.driverPhone || '',
     vehicleType: meta.vehicleType || 'car',
     origin: meta.origin || { address: '', lat: 0, lng: 0 },
     destination: meta.destination || { address: '', lat: 0, lng: 0 },
@@ -19,8 +22,6 @@ const encodeDescriptionWithMeta = (description, meta = {}) => {
     seatsAvailable: meta.seatsAvailable || 3,
     pricePerSeat: meta.pricePerSeat || 0,
     currency: meta.currency || '₹',
-    driverPhone: meta.driverPhone || '',
-    driverName: meta.driverName || 'Driver',
     passengers: meta.passengers || [],
     preferences: meta.preferences || {},
   };
@@ -83,6 +84,7 @@ export const RideProvider = ({ children }) => {
         if (!gigError && gigData && Array.isArray(gigData)) {
           gigData.forEach(g => {
             const { description, meta } = decodeDescriptionWithMeta(g.description);
+            const driverId = meta.driverId || g.posted_by;
             const rideObj = {
               id: String(g.id),
               vehicleType: meta.vehicleType || 'car',
@@ -93,7 +95,7 @@ export const RideProvider = ({ children }) => {
               pricePerSeat: Number(meta.pricePerSeat || g.amount || 0),
               currency: g.currency || meta.currency || '₹',
               description: description || '',
-              driverId: g.posted_by,
+              driverId: driverId,
               driverName: meta.driverName || 'Driver',
               driverPhone: meta.driverPhone || '',
               status: g.status || 'active',
@@ -118,6 +120,7 @@ export const RideProvider = ({ children }) => {
         if (!ridesError && directRides && Array.isArray(directRides)) {
           directRides.forEach(r => {
             const { description, meta } = decodeDescriptionWithMeta(r.description);
+            const driverId = r.driver_id || meta.driverId;
             const rideObj = {
               id: String(r.id),
               vehicleType: r.vehicle_type || meta.vehicleType || 'car',
@@ -128,7 +131,7 @@ export const RideProvider = ({ children }) => {
               pricePerSeat: Number(r.price_per_seat || meta.pricePerSeat || 0),
               currency: r.currency || meta.currency || '₹',
               description: description || '',
-              driverId: r.driver_id,
+              driverId: driverId,
               driverName: r.driver_name || meta.driverName || 'Driver',
               driverPhone: r.driver_phone || meta.driverPhone || '',
               status: r.status || 'active',
@@ -154,7 +157,7 @@ export const RideProvider = ({ children }) => {
     }
   }, []);
 
-  // Fetch on mount & poll every 5 seconds + Realtime channel on gigs & rides
+  // Fetch on mount & poll every 4 seconds + Realtime channel on gigs & rides
   useEffect(() => {
     syncWithSupabase();
     const interval = setInterval(syncWithSupabase, 4000);
@@ -249,7 +252,6 @@ export const RideProvider = ({ children }) => {
       } else if (originQuery && originQuery.trim()) {
         const q = originQuery.toLowerCase();
         const address = (ride.origin?.address || '').toLowerCase();
-        // Check if query is in address or words match
         const words = q.split(/[\s,]+/).filter(w => w.length > 2);
         const matches = words.some(w => address.includes(w));
         if (!address.includes(q) && !matches) return false;
@@ -319,9 +321,29 @@ export const RideProvider = ({ children }) => {
     };
   }, [rides, location]);
 
-  // Helper to persist ride across both Supabase tables
+  // Helper to persist ride across both Supabase tables with PRESERVED driver identity
   const saveRideToSupabase = async (ride, meta) => {
-    const encodedDescription = encodeDescriptionWithMeta(ride.description || '', meta);
+    const driverId = ride.driverId || meta?.driverId || (user?.id ? user.id : ride.id);
+    const driverName = ride.driverName || meta?.driverName || 'Driver';
+    const driverPhone = ride.driverPhone || meta?.driverPhone || '';
+
+    const fullMeta = {
+      ...meta,
+      driverId,
+      driverName,
+      driverPhone,
+      vehicleType: ride.vehicleType,
+      origin: ride.origin,
+      destination: ride.destination,
+      departureDate: ride.departureDate,
+      seatsAvailable: ride.seatsAvailable,
+      pricePerSeat: ride.pricePerSeat,
+      currency: ride.currency,
+      passengers: ride.passengers || meta?.passengers || [],
+      preferences: ride.preferences || meta?.preferences || {},
+    };
+
+    const encodedDescription = encodeDescriptionWithMeta(ride.description || '', fullMeta);
 
     // 1. Primary: Save to public.gigs table
     const gigPayload = {
@@ -334,7 +356,7 @@ export const RideProvider = ({ children }) => {
       date: ride.departureDate,
       duration: 'One-way trip',
       location: ride.origin,
-      posted_by: isUuid(user?.id) ? user.id : ride.id,
+      posted_by: isUuid(driverId) ? driverId : ride.id,
       status: ride.status || 'active',
       posted_at: ride.postedAt || new Date().toISOString(),
     };
@@ -357,9 +379,9 @@ export const RideProvider = ({ children }) => {
         price_per_seat: ride.pricePerSeat,
         currency: ride.currency,
         description: encodedDescription,
-        driver_id: isUuid(user?.id) ? user.id : null,
-        driver_name: ride.driverName,
-        driver_phone: ride.driverPhone,
+        driver_id: isUuid(driverId) ? driverId : null,
+        driver_name: driverName,
+        driver_phone: driverPhone,
         status: ride.status || 'active',
         posted_at: ride.postedAt || new Date().toISOString(),
       };
@@ -375,6 +397,9 @@ export const RideProvider = ({ children }) => {
 
     const passengers = [];
     const preferences = rideData.preferences || {};
+    const driverId = user?.id || rideId;
+    const driverName = user?.name || rideData.driverName || 'Driver';
+    const driverPhone = rideData.driverPhone || user?.phone || '';
 
     const newRide = {
       id: rideId,
@@ -386,9 +411,9 @@ export const RideProvider = ({ children }) => {
       pricePerSeat: Number(rideData.pricePerSeat),
       currency: rideData.currency || '₹',
       description: rideData.description || '',
-      driverId: user?.id || rideId,
-      driverName: user?.name || rideData.driverName || 'Driver',
-      driverPhone: rideData.driverPhone || user?.phone || '',
+      driverId,
+      driverName,
+      driverPhone,
       status: 'active',
       postedAt: new Date().toISOString(),
       passengers,
@@ -401,6 +426,9 @@ export const RideProvider = ({ children }) => {
 
     // Persist to Supabase backend
     await saveRideToSupabase(newRide, {
+      driverId,
+      driverName,
+      driverPhone,
       vehicleType: newRide.vehicleType,
       origin: newRide.origin,
       destination: newRide.destination,
@@ -408,8 +436,6 @@ export const RideProvider = ({ children }) => {
       seatsAvailable: newRide.seatsAvailable,
       pricePerSeat: newRide.pricePerSeat,
       currency: newRide.currency,
-      driverPhone: newRide.driverPhone,
-      driverName: newRide.driverName,
       passengers,
       preferences,
     });
@@ -434,7 +460,9 @@ export const RideProvider = ({ children }) => {
     const passengerUserName = user?.name || 'Passenger';
     const passengerUserPhone = user?.phone || '';
 
-    const existingReq = (currentRide.passengers || []).find(p => p.passengerId === passengerUserId);
+    const existingReq = (currentRide.passengers || []).find(
+      p => String(p.passengerId) === String(passengerUserId)
+    );
     if (existingReq) {
       showToast('You have already requested a seat!', 'info');
       return false;
@@ -473,8 +501,11 @@ export const RideProvider = ({ children }) => {
     showToast('Seat booking request sent! Driver will be notified.', 'success');
 
     await saveRideToSupabase(updatedRide, {
-      ...currentRide,
+      driverId: currentRide.driverId,
+      driverName: currentRide.driverName,
+      driverPhone: currentRide.driverPhone,
       passengers: updatedPassengers,
+      preferences: currentRide.preferences,
     });
 
     return true;
@@ -508,8 +539,11 @@ export const RideProvider = ({ children }) => {
     }
 
     await saveRideToSupabase(updatedRide, {
-      ...currentRide,
+      driverId: currentRide.driverId,
+      driverName: currentRide.driverName,
+      driverPhone: currentRide.driverPhone,
       passengers: updatedPassengers,
+      preferences: currentRide.preferences,
     });
   }, [rides, showToast]);
 
@@ -543,8 +577,11 @@ export const RideProvider = ({ children }) => {
     setRides(prev => prev.map(r => String(r.id) === String(rideId) ? updatedRide : r));
 
     await saveRideToSupabase(updatedRide, {
-      ...currentRide,
+      driverId: currentRide.driverId,
+      driverName: currentRide.driverName,
+      driverPhone: currentRide.driverPhone,
       passengers: updatedPassengers,
+      preferences: currentRide.preferences,
     });
   }, [user, rides]);
 

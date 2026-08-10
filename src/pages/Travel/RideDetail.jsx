@@ -42,8 +42,20 @@ const RideDetail = () => {
 
   const isBike = ride.vehicleType === 'bike';
   const VehicleIcon = isBike ? Bike : Car;
-  const isDriver = user?.id === ride.driverId;
-  const myRequest = user ? (ride.passengers || []).find(p => p.passengerId === user.id) : null;
+
+  // Check if current user is the passenger who requested
+  const myRequest = user ? (ride.passengers || []).find(
+    p => String(p.passengerId) === String(user.id)
+  ) : null;
+
+  // Check if current user is the driver (only if they did not book as a passenger)
+  const isDriver = Boolean(
+    user?.id && 
+    ride.driverId && 
+    String(user.id) === String(ride.driverId) && 
+    !myRequest
+  );
+
   const approvedCount = (ride.passengers || []).filter(p => p.status === 'approved').length;
   const isFull = approvedCount >= ride.seatsAvailable;
 
@@ -237,7 +249,35 @@ const RideDetail = () => {
           </div>
         </section>
 
-        {/* Passenger Requests (For Driver) */}
+        {/* Passenger Status Card (For the passenger who booked) */}
+        {!isDriver && myRequest && (
+          <section className="detail-section my-request-card glass-card animate-fade-in-up">
+            <h3><ShieldCheck size={18} className="text-success" /> Your Booking Request</h3>
+            <div className="my-req-status-banner">
+              <span className={`status-badge-lg ${myRequest.status}`}>
+                {myRequest.status === 'pending' && '⏳ Waiting for driver approval'}
+                {myRequest.status === 'approved' && '🎉 Seat confirmed! You are booked.'}
+                {myRequest.status === 'rejected' && '❌ Booking not accepted by driver'}
+              </span>
+            </div>
+
+            <p className="text-xs text-secondary mt-2">
+              Note sent: "{myRequest.message}"
+            </p>
+
+            <div className="my-req-chat-bar mt-4">
+              <button
+                className="btn btn-primary btn-block"
+                onClick={() => setActiveChatRequest(myRequest)}
+              >
+                <MessageSquare size={18} />
+                Chat with Driver {myRequest.messages?.length > 0 && `(${myRequest.messages.length})`}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Passenger Requests (ONLY for Driver) */}
         {isDriver && (
           <section className="detail-section applicants-section glass-card animate-fade-in-up">
             <h3><Users size={18} className="text-accent" /> Passenger Requests ({(ride.passengers || []).length})</h3>
@@ -298,43 +338,19 @@ const RideDetail = () => {
           </section>
         )}
 
-        {/* Passenger Status Card */}
-        {!isDriver && myRequest && (
-          <section className="detail-section my-request-card glass-card animate-fade-in-up">
-            <h3><ShieldCheck size={18} className="text-success" /> Your Booking</h3>
-            <div className="my-req-status-banner">
-              <span className={`status-badge-lg ${myRequest.status}`}>
-                {myRequest.status === 'pending' && '⏳ Waiting for driver approval'}
-                {myRequest.status === 'approved' && '🎉 Seat confirmed! You are booked.'}
-                {myRequest.status === 'rejected' && '❌ Booking not accepted'}
-              </span>
-            </div>
-
-            <div className="my-req-chat-bar mt-3">
-              <button
-                className="btn btn-primary btn-block"
-                onClick={() => setActiveChatRequest(myRequest)}
-              >
-                <MessageSquare size={18} />
-                Chat with Driver ({myRequest.messages?.length || 0} messages)
-              </button>
-            </div>
-          </section>
-        )}
-
         {/* Book Modal */}
         {showBookModal && (
           <div className="apply-modal-overlay animate-fade-in">
             <div className="apply-modal glass-card animate-fade-in-up">
               <h3>Book a Seat</h3>
               <p className="text-xs text-secondary mb-3">
-                Send a booking request to the driver. They will approve your seat.
+                Send a booking request to {ride.driverName}. You can chat and agree on pickup details.
               </p>
 
               <form onSubmit={handleBookSeat}>
                 <textarea
                   className="input-field"
-                  placeholder="Introduce yourself or mention pickup preferences..."
+                  placeholder="Introduce yourself, specify pickup location..."
                   value={requestNote}
                   onChange={e => setRequestNote(e.target.value)}
                   rows={4}
@@ -345,7 +361,7 @@ const RideDetail = () => {
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary">
-                    <Send size={16} /> Send Request
+                    <Send size={16} /> Send Booking Request
                   </button>
                 </div>
               </form>
@@ -410,7 +426,7 @@ const RideDetail = () => {
         {/* Chat Drawer */}
         {updatedActiveChatReq && (
           <ChatDrawer
-            isOpen={!!activeChatRequest}
+            isOpen={Boolean(activeChatRequest)}
             onClose={() => setActiveChatRequest(null)}
             gigTitle={`${ride.origin?.address} → ${ride.destination?.address}`}
             currentUserId={user?.id || 'guest'}
