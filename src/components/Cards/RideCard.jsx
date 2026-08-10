@@ -1,22 +1,50 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Users, Car, Bike, ArrowRight, Calendar, Navigation } from 'lucide-react';
-import { formatDate, formatTime, formatAmount, formatDistance, getInitials } from '../../utils/helpers';
+import { MapPin, Clock, Users, Car, Bike, ArrowRight, Calendar, Crown, ShieldAlert, CheckCircle, Hourglass } from 'lucide-react';
+import { formatDate, formatTime, formatAmount, getInitials } from '../../utils/helpers';
+import { useRides } from '../../context/RideContext';
+import { useAuth } from '../../context/AuthContext';
 import './RideCard.css';
 
 const RideCard = ({ ride }) => {
+  const { isRideOwner, getPassengerBooking } = useRides();
+  const { user } = useAuth();
+
   const isBike = ride.vehicleType === 'bike';
   const VehicleIcon = isBike ? Bike : Car;
+
+  const isOwner = isRideOwner(ride);
+  const myBooking = getPassengerBooking(ride);
 
   const approvedCount = (ride.passengers || []).filter(p => p.status === 'approved').length;
   const pendingCount = (ride.passengers || []).filter(p => p.status === 'pending').length;
 
   return (
-    <Link to={`/travel/ride/${ride.id}`} className={`ride-card glass-card ${isBike ? 'ride-bike' : 'ride-car'}`}>
+    <Link 
+      to={`/travel/ride/${ride.id}`} 
+      className={`ride-card glass-card ${isBike ? 'ride-bike' : 'ride-car'} ${isOwner ? 'owner-card-highlight' : ''}`}
+    >
       <div className="ride-card-header">
-        <div className={`ride-vehicle-badge ${ride.vehicleType}`}>
-          <VehicleIcon size={16} />
-          <span>{isBike ? 'Bike' : 'Car'}</span>
+        <div className="header-left-badges">
+          <div className={`ride-vehicle-badge ${ride.vehicleType}`}>
+            <VehicleIcon size={16} />
+            <span>{isBike ? 'Bike' : 'Car'}</span>
+          </div>
+
+          {isOwner && (
+            <span className="owner-role-badge">
+              <Crown size={12} /> Owner
+            </span>
+          )}
+
+          {myBooking && !isOwner && (
+            <span className={`my-booking-chip ${myBooking.status}`}>
+              {myBooking.status === 'pending' && <>⏳ Pending Approval</>}
+              {myBooking.status === 'approved' && <>✅ Seat Confirmed</>}
+              {myBooking.status === 'rejected' && <>❌ Not Accepted</>}
+            </span>
+          )}
         </div>
+
         <div className="ride-card-header-right">
           <span className="ride-card-date">
             <Calendar size={12} />
@@ -46,7 +74,7 @@ const RideCard = ({ ride }) => {
             <span className="route-text">{ride.destination?.address || 'Destination'}</span>
             {ride.distFromSearchDest !== null && ride.distFromSearchDest !== undefined && (
               <span className="route-distance-tag dest-tag">
-                🏁 {ride.distFromSearchDest.toFixed(1)} km from your destination
+                🏁 {ride.distFromSearchDest.toFixed(1)} km from destination
               </span>
             )}
           </div>
@@ -75,14 +103,21 @@ const RideCard = ({ ride }) => {
           <div className="avatar avatar-sm">
             {getInitials(ride.driverName)}
           </div>
-          <span className="driver-name">{ride.driverName}</span>
+          <div className="driver-name-block">
+            <span className="driver-name">{ride.driverName}</span>
+            {ride.ownerEmail && (
+              <span className="driver-email-sub">{ride.ownerEmail}</span>
+            )}
+          </div>
         </div>
 
         <div className="ride-card-badges">
-          {pendingCount > 0 && (
-            <span className="badge badge-info">{pendingCount} pending</span>
+          {isOwner && pendingCount > 0 && (
+            <span className="badge badge-warning animate-pulse">
+              🔔 {pendingCount} to approve
+            </span>
           )}
-          {ride.status === 'active' && (
+          {ride.status === 'active' && !isOwner && !myBooking && (
             <span className="badge badge-success">Available</span>
           )}
           {ride.status === 'full' && (

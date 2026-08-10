@@ -216,12 +216,22 @@
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
+  position: relative;
 }
 
 .travel-tab.active {
   background: #ffffff;
   color: #3b82f6;
   box-shadow: var(--shadow-sm);
+}
+
+.tab-pending-badge {
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
 }
 
 /* Search Card */
@@ -603,7 +613,8 @@
   margin-bottom: var(--space-3);
 }
 
-.travel-feed .feed-empty h3 {
+.travel-feed .feed-empty h3,
+.travel-feed .feed-empty h4 {
   font-family: var(--font-heading);
   font-size: var(--fs-lg);
   margin-bottom: var(--space-2);
@@ -620,17 +631,66 @@
   gap: var(--space-2);
 }
 
-/* My Rides */
+/* My Rides Subtabs */
 .travel-my-rides {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
+}
+
+.my-rides-subtabs {
+  display: flex;
+  gap: var(--space-2);
+  background: var(--bg-secondary);
+  padding: 4px;
+  border-radius: var(--radius-xl);
+}
+
+.subtab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.subtab-btn.active {
+  background: #ffffff;
+  color: #3b82f6;
+  box-shadow: var(--shadow-sm);
+}
+
+.subtab-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
 }
 
 .my-rides-section {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
   overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.my-rides-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .my-rides-title {
@@ -639,16 +699,20 @@
   gap: var(--space-2);
   font-family: var(--font-heading);
   font-size: var(--fs-base);
-  font-weight: 600;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  font-weight: 700;
+  margin: 0;
+}
+
+.p-3 {
+  padding: var(--space-3);
 }
 
 .empty-tab-sub {
-  padding: var(--space-5);
+  padding: var(--space-8) var(--space-4);
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Stagger animation */
@@ -686,7 +750,8 @@
     align-items: stretch;
   }
 
-  .map-pick-trigger-btn .btn-label {
-    display: none;
+  .my-rides-header-bar {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

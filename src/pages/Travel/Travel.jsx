@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Search, Car, Bike, MapPin, Calendar, Navigation, 
   Plus, ArrowRight, Route, Users, Zap, Globe, SlidersHorizontal, 
-  Map as MapIcon, Compass, X
+  Map as MapIcon, Compass, X, Crown, Ticket
 } from 'lucide-react';
 import { useRides } from '../../context/RideContext';
 import { useAuth } from '../../context/AuthContext';
@@ -19,8 +19,9 @@ const Travel = () => {
   const { location } = useLocation();
 
   const [activeTab, setActiveTab] = useState('find'); // 'find' | 'myrides'
+  const [myRidesSubTab, setMyRidesSubTab] = useState('published'); // 'published' | 'booked'
   const [vehicleFilter, setVehicleFilter] = useState('all'); // 'all' | 'car' | 'bike'
-  const [selectedCountry, setSelectedCountry] = useState('ALL'); // 'ALL' or country code like 'IN', 'US', etc.
+  const [selectedCountry, setSelectedCountry] = useState('ALL'); // 'ALL' or country code
   
   // Origin
   const [originSearch, setOriginSearch] = useState('');
@@ -41,7 +42,7 @@ const Travel = () => {
   // Map Picker Modal State
   const [mapPickerTarget, setMapPickerTarget] = useState(null); // 'origin' | 'dest' | null
 
-  // Search places using OpenStreetMap Nominatim with spelling tolerance & country filter
+  // Search places using OpenStreetMap Nominatim globally
   const searchPlaces = async (query, countryCode, setSuggestions, setSearching) => {
     if (!query.trim() || query.length < 2) {
       setSuggestions([]);
@@ -122,6 +123,11 @@ const Travel = () => {
   const myOffered = getMyOfferedRides();
   const myBooked = getMyBookedRides();
 
+  // Pending requests count on my offered rides
+  const totalPendingOnMyRides = myOffered.reduce((acc, r) => {
+    return acc + (r.passengers || []).filter(p => p.status === 'pending').length;
+  }, 0);
+
   const displayRides = activeTab === 'find' 
     ? (hasActiveFilters ? filteredRides : allActiveRides)
     : [];
@@ -174,7 +180,7 @@ const Travel = () => {
             </div>
             <div className="action-text">
               <strong>Offer a Ride</strong>
-              <span>Share empty seats in your car or bike</span>
+              <span>Share empty seats in your car or bike as an owner</span>
             </div>
             <ArrowRight size={18} className="action-arrow" />
           </Link>
@@ -195,6 +201,9 @@ const Travel = () => {
           >
             <Route size={16} />
             My Rides ({myOffered.length + myBooked.length})
+            {totalPendingOnMyRides > 0 && (
+              <span className="tab-pending-badge">{totalPendingOnMyRides}</span>
+            )}
           </button>
         </section>
 
@@ -460,51 +469,102 @@ const Travel = () => {
               <div className="feed-empty">
                 <div className="feed-empty-icon">🔒</div>
                 <h3>Login Required</h3>
-                <p>Please login to see your offered and booked rides</p>
+                <p>Please login to see your published and booked rides</p>
                 <Link to="/login" className="btn btn-primary mt-4">Login</Link>
               </div>
             ) : (
               <>
-                {/* Offered Rides */}
-                <div className="my-rides-section">
-                  <h3 className="my-rides-title">
-                    <Car size={18} />
-                    Rides I Offered ({myOffered.length})
-                  </h3>
-                  {myOffered.length > 0 ? (
-                    <div className="feed-list">
-                      {myOffered.map(ride => (
-                        <RideCard key={ride.id} ride={ride} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="empty-tab-sub">
-                      <p className="text-secondary text-sm">You haven't offered any rides yet.</p>
-                      <Link to="/travel/offer" className="btn btn-primary btn-sm mt-3">
-                        Offer a Ride Now
-                      </Link>
-                    </div>
-                  )}
+                {/* My Rides Sub-tabs */}
+                <div className="my-rides-subtabs">
+                  <button
+                    className={`subtab-btn ${myRidesSubTab === 'published' ? 'active' : ''}`}
+                    onClick={() => setMyRidesSubTab('published')}
+                  >
+                    <Crown size={15} />
+                    Published as Owner ({myOffered.length})
+                    {totalPendingOnMyRides > 0 && (
+                      <span className="badge badge-warning subtab-badge">{totalPendingOnMyRides}</span>
+                    )}
+                  </button>
+                  <button
+                    className={`subtab-btn ${myRidesSubTab === 'booked' ? 'active' : ''}`}
+                    onClick={() => setMyRidesSubTab('booked')}
+                  >
+                    <Ticket size={15} />
+                    Booked as Passenger ({myBooked.length})
+                  </button>
                 </div>
 
-                {/* Booked Rides */}
-                <div className="my-rides-section">
-                  <h3 className="my-rides-title">
-                    <Users size={18} />
-                    Rides I Booked ({myBooked.length})
-                  </h3>
-                  {myBooked.length > 0 ? (
-                    <div className="feed-list">
-                      {myBooked.map(ride => (
-                        <RideCard key={ride.id} ride={ride} />
-                      ))}
+                {/* Sub-tab 1: Published Rides as Owner */}
+                {myRidesSubTab === 'published' && (
+                  <div className="my-rides-section animate-fade-in">
+                    <div className="my-rides-header-bar">
+                      <div>
+                        <h3 className="my-rides-title">
+                          <Crown size={18} className="text-accent" />
+                          My Published Rides ({myOffered.length})
+                        </h3>
+                        <p className="text-xs text-secondary">
+                          Rides you published with {user.email || user.name}. You can approve passenger seat requests here.
+                        </p>
+                      </div>
+                      <Link to="/travel/offer" className="btn btn-primary btn-sm">
+                        <Plus size={14} /> Offer New Ride
+                      </Link>
                     </div>
-                  ) : (
-                    <div className="empty-tab-sub">
-                      <p className="text-secondary text-sm">You haven't booked any seats yet.</p>
+
+                    {myOffered.length > 0 ? (
+                      <div className="feed-list p-3">
+                        {myOffered.map(ride => (
+                          <RideCard key={ride.id} ride={ride} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-tab-sub">
+                        <div className="feed-empty-icon">🚗</div>
+                        <h4>You haven't published any rides yet</h4>
+                        <p className="text-secondary text-sm">Have empty seats in your car or bike? Share your journey and split costs.</p>
+                        <Link to="/travel/offer" className="btn btn-primary mt-4">
+                          Offer a Ride Now
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Sub-tab 2: Booked Rides as Customer */}
+                {myRidesSubTab === 'booked' && (
+                  <div className="my-rides-section animate-fade-in">
+                    <div className="my-rides-header-bar">
+                      <div>
+                        <h3 className="my-rides-title">
+                          <Ticket size={18} className="text-accent" />
+                          My Booked Rides ({myBooked.length})
+                        </h3>
+                        <p className="text-xs text-secondary">
+                          Seats you booked with {user.email || user.name}. Check approval status and chat with owners.
+                        </p>
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {myBooked.length > 0 ? (
+                      <div className="feed-list p-3">
+                        {myBooked.map(ride => (
+                          <RideCard key={ride.id} ride={ride} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-tab-sub">
+                        <div className="feed-empty-icon">🎫</div>
+                        <h4>No seat bookings yet</h4>
+                        <p className="text-secondary text-sm">Search for rides to your destination and book a seat with friendly drivers.</p>
+                        <button className="btn btn-primary mt-4" onClick={() => setActiveTab('find')}>
+                          Find Rides
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </section>

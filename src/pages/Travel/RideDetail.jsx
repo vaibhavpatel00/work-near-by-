@@ -4,9 +4,9 @@ import {
   ArrowLeft, MapPin, Clock, Calendar, Car, Bike, Users, Phone, 
   CheckCircle, AlertTriangle, Mail, MessageSquare, Send, 
   ShieldCheck, Check, X, Trash2, Wind, Package, Music, Cigarette,
-  ArrowRight, Loader2
+  ArrowRight, Loader2, Crown, UserCheck, Hourglass
 } from 'lucide-react';
-import { useRides } from '../../context/RideContext';
+import { useRides, isRideOwner, getPassengerBooking } from '../../context/RideContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatDate, formatTime, formatDistance, formatAmount, getInitials } from '../../utils/helpers';
 import ChatDrawer from '../../components/Chat/ChatDrawer';
@@ -44,20 +44,9 @@ const RideDetail = () => {
   const isBike = ride.vehicleType === 'bike';
   const VehicleIcon = isBike ? Bike : Car;
 
-  // Check if current user is one of the passengers who requested
-  const myRequest = user ? (ride.passengers || []).find(
-    p => String(p.passengerId) === String(user.id) ||
-         (user.phone && p.passengerPhone && user.phone.replace(/\D/g, '') === p.passengerPhone.replace(/\D/g, ''))
-  ) : null;
-
-  // Check if current user is the driver
-  const isDriver = Boolean(
-    user && (
-      (user.id && ride.driverId && String(user.id) === String(ride.driverId)) ||
-      (user.phone && ride.driverPhone && user.phone.replace(/\D/g, '') === ride.driverPhone.replace(/\D/g, '')) ||
-      (user.name && ride.driverName && user.name.trim().toLowerCase() === ride.driverName.trim().toLowerCase())
-    ) && !myRequest
-  );
+  // Strict Owner vs Passenger Determination
+  const isOwner = isRideOwner(ride, user);
+  const myBooking = getPassengerBooking(ride, user);
 
   const approvedCount = (ride.passengers || []).filter(p => p.status === 'approved').length;
   const isFull = approvedCount >= ride.seatsAvailable;
@@ -109,12 +98,12 @@ const RideDetail = () => {
             Back
           </button>
           <div className="topbar-right-actions">
-            {isDriver && (
+            {isOwner && (
               <button 
                 className="btn btn-ghost btn-sm text-error" 
                 onClick={() => setShowDeleteModal(true)}
               >
-                <Trash2 size={16} /> Delete
+                <Trash2 size={16} /> Delete Ride
               </button>
             )}
             <div className={`ride-type-badge ${ride.vehicleType}`}>
@@ -123,6 +112,19 @@ const RideDetail = () => {
             </div>
           </div>
         </div>
+
+        {/* Owner Dashboard Banner */}
+        {isOwner && (
+          <div className="owner-role-banner animate-fade-in">
+            <div className="owner-banner-content">
+              <Crown size={20} className="owner-crown-icon" />
+              <div>
+                <strong>👑 You are the Owner of this Ride</strong>
+                <p>Manage passenger bookings, approve applicants, and chat with riders.</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Route Header */}
         <section className="ride-route-header glass-card animate-fade-in-up">
@@ -233,15 +235,18 @@ const RideDetail = () => {
           </section>
         )}
 
-        {/* Driver Info */}
+        {/* Driver / Owner Info */}
         <section className="detail-section glass-card animate-fade-in-up">
-          <h3>Driver</h3>
+          <h3>Ride Owner & Driver</h3>
           <div className="poster-profile">
             <div className="avatar avatar-lg">
               {getInitials(ride.driverName)}
             </div>
             <div className="poster-details">
               <h4>{ride.driverName}</h4>
+              {ride.ownerEmail && (
+                <p className="text-xs text-secondary mb-1">📧 {ride.ownerEmail}</p>
+              )}
               {ride.driverPhone && (
                 <div className="driver-contact-actions">
                   <a href={`tel:${ride.driverPhone}`} className="btn btn-outline btn-sm">
@@ -261,45 +266,63 @@ const RideDetail = () => {
           </div>
         </section>
 
-        {/* Passenger Status Card (For the passenger who booked) */}
-        {!isDriver && myRequest && (
+        {/* CUSTOMER VIEW: Booking Status Card */}
+        {!isOwner && myBooking && (
           <section className="detail-section my-request-card glass-card animate-fade-in-up">
-            <h3><ShieldCheck size={18} className="text-success" /> Your Booking Request</h3>
-            <div className="my-req-status-banner">
-              <span className={`status-badge-lg ${myRequest.status}`}>
-                {myRequest.status === 'pending' && '⏳ Waiting for driver approval'}
-                {myRequest.status === 'approved' && '🎉 Seat confirmed! You are booked.'}
-                {myRequest.status === 'rejected' && '❌ Booking not accepted by driver'}
+            <div className="my-req-header">
+              <ShieldCheck size={20} className="text-success" />
+              <h3>Your Booking Status</h3>
+            </div>
+
+            <div className="my-req-status-banner mt-3">
+              <span className={`status-badge-lg ${myBooking.status}`}>
+                {myBooking.status === 'pending' && '⏳ Waiting for Owner Approval'}
+                {myBooking.status === 'approved' && '🎉 Seat Confirmed & Booked!'}
+                {myBooking.status === 'rejected' && '❌ Request Not Accepted'}
               </span>
             </div>
 
-            {myRequest.message && (
-              <p className="text-xs text-secondary mt-2">
-                Note sent: "{myRequest.message}"
-              </p>
+            <p className="booking-status-helper text-xs text-secondary mt-2">
+              {myBooking.status === 'pending' && `Your seat request has been sent to ${ride.driverName}. You will be notified once approved.`}
+              {myBooking.status === 'approved' && `The owner has confirmed your seat. You can chat with ${ride.driverName} to arrange pickup.`}
+              {myBooking.status === 'rejected' && `The owner was unable to accept this booking request.`}
+            </p>
+
+            {myBooking.message && (
+              <div className="booking-sent-note mt-3">
+                <span className="note-label">Your message to owner:</span>
+                <p className="note-text">"{myBooking.message}"</p>
+              </div>
             )}
 
             <div className="my-req-chat-bar mt-4">
               <button
                 className="btn btn-primary btn-block"
-                onClick={() => setActiveChatRequest(myRequest)}
+                onClick={() => setActiveChatRequest(myBooking)}
               >
                 <MessageSquare size={18} />
-                Chat with Driver {myRequest.messages?.length > 0 && `(${myRequest.messages.length})`}
+                Chat with Owner ({ride.driverName}) {myBooking.messages?.length > 0 && `(${myBooking.messages.length})`}
               </button>
             </div>
           </section>
         )}
 
-        {/* Passenger Requests (ONLY for Driver) */}
-        {isDriver && (
+        {/* OWNER VIEW: Passenger Requests List */}
+        {isOwner && (
           <section className="detail-section applicants-section glass-card animate-fade-in-up">
-            <h3><Users size={18} className="text-accent" /> Passenger Requests ({(ride.passengers || []).length})</h3>
+            <div className="section-header-row">
+              <h3>
+                <Users size={18} className="text-accent" /> 
+                Passenger Applicants & Requests ({(ride.passengers || []).length})
+              </h3>
+              <span className="badge badge-info">{approvedCount}/{ride.seatsAvailable} seats filled</span>
+            </div>
 
             {(!ride.passengers || ride.passengers.length === 0) ? (
               <div className="empty-requests-box">
                 <Users size={32} className="text-tertiary mb-2" />
-                <p className="text-sm text-secondary">No passenger requests yet.</p>
+                <p className="text-sm text-secondary">No passenger booking requests yet.</p>
+                <p className="text-xs text-tertiary">When customers search and book a seat, their requests will appear here for your approval.</p>
               </div>
             ) : (
               <div className="requests-list">
@@ -310,14 +333,19 @@ const RideDetail = () => {
                         <div className="avatar avatar-md">{getInitials(req.passengerName)}</div>
                         <div>
                           <h4 className="req-worker-name">{req.passengerName}</h4>
+                          {req.passengerEmail && (
+                            <span className="text-xs text-tertiary" style={{ display: 'block' }}>
+                              📧 {req.passengerEmail}
+                            </span>
+                          )}
                           {req.passengerPhone && (
-                            <span className="text-xs text-secondary d-block" style={{ display: 'block' }}>
-                              {req.passengerPhone}
+                            <span className="text-xs text-secondary" style={{ display: 'block' }}>
+                              📞 {req.passengerPhone}
                             </span>
                           )}
                           <span className={`status-pill ${req.status}`}>
-                            {req.status === 'pending' && '⏳ Pending Approval'}
-                            {req.status === 'approved' && '✅ Approved'}
+                            {req.status === 'pending' && '⏳ Waiting Your Approval'}
+                            {req.status === 'approved' && '✅ Approved & Confirmed'}
                             {req.status === 'rejected' && '❌ Rejected'}
                           </span>
                         </div>
@@ -357,19 +385,19 @@ const RideDetail = () => {
           </section>
         )}
 
-        {/* Book Modal */}
+        {/* Customer Book Modal */}
         {showBookModal && (
           <div className="apply-modal-overlay animate-fade-in">
             <div className="apply-modal glass-card animate-fade-in-up">
               <h3>Book a Seat</h3>
               <p className="text-xs text-secondary mb-3">
-                Send a booking request to {ride.driverName}. You can chat and agree on pickup details.
+                Send a booking request to {ride.driverName} ({ride.ownerEmail || 'Owner'}). You will be notified once they approve.
               </p>
 
               <form onSubmit={handleBookSeat}>
                 <textarea
                   className="input-field"
-                  placeholder="Introduce yourself, specify pickup location..."
+                  placeholder="Introduce yourself, mention your pickup location..."
                   value={requestNote}
                   onChange={e => setRequestNote(e.target.value)}
                   rows={4}
@@ -382,7 +410,7 @@ const RideDetail = () => {
                   <button type="submit" className="btn btn-primary" disabled={isBooking}>
                     {isBooking ? (
                       <>
-                        <Loader2 size={16} className="spin" /> Sending...
+                        <Loader2 size={16} className="spin" /> Sending Request...
                       </>
                     ) : (
                       <>
@@ -396,7 +424,7 @@ const RideDetail = () => {
           </div>
         )}
 
-        {/* Delete Confirmation */}
+        {/* Delete Confirmation Modal */}
         {showDeleteModal && (
           <div className="apply-modal-overlay animate-fade-in">
             <div className="apply-modal glass-card animate-fade-in-up">
@@ -418,14 +446,23 @@ const RideDetail = () => {
 
         {/* Footer Actions */}
         <div className="detail-action-bar">
-          {ride.status === 'active' && !isDriver && !myRequest && !isFull && (
+          {/* Non-owner customer without booking */}
+          {ride.status === 'active' && !isOwner && !myBooking && !isFull && (
             <button className="btn btn-primary btn-lg btn-block" onClick={() => setShowBookModal(true)}>
               <CheckCircle size={20} />
-              Book a Seat
+              Book a Seat ({formatAmount(ride.pricePerSeat, ride.currency || '₹')})
             </button>
           )}
 
-          {isDriver && (
+          {/* Full ride for non-booked customer */}
+          {!isOwner && !myBooking && isFull && (
+            <button className="btn btn-outline btn-lg btn-block" disabled>
+              All Seats Booked
+            </button>
+          )}
+
+          {/* Owner controls */}
+          {isOwner && (
             <div className="owner-action-buttons">
               {ride.status === 'active' && (
                 <button className="btn btn-outline btn-block text-error" onClick={() => cancelRide(ride.id)}>
@@ -458,7 +495,7 @@ const RideDetail = () => {
             gigTitle={`${ride.origin?.address} → ${ride.destination?.address}`}
             currentUserId={user?.id || 'guest'}
             otherUser={
-              isDriver 
+              isOwner 
                 ? { name: updatedActiveChatReq.passengerName }
                 : { name: ride.driverName }
             }

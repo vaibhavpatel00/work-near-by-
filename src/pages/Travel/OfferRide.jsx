@@ -194,7 +194,8 @@ const OfferRide = () => {
         pricePerSeat: Number(form.pricePerSeat),
         currency: form.currencySymbol,
         description: form.description,
-        driverName: form.driverName || user?.name || 'Driver',
+        ownerEmail: user?.email || '',
+        driverName: form.driverName || user?.name || user?.email?.split('@')[0] || 'Driver',
         driverPhone: form.driverPhone || user?.phone || '',
         preferences: form.preferences,
       });
