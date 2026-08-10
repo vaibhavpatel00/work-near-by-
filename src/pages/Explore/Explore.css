@@ -64,21 +64,33 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Search Bar */
 .explore-search {
-  margin-bottom: var(--space-1);
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.explore-search .search-bar-container {
+.explore-search .input-icon-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.explore-search .input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.explore-search .search-input {
   width: 100%;
-}
-
-.explore-search .input-field {
+  padding-left: 42px;
   padding-right: 36px;
 }
 
-.explore-search .clear-search-btn {
+.clear-search-btn {
   position: absolute;
   right: 12px;
   background: transparent;
@@ -88,141 +100,41 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
 }
 
-.explore-search .clear-search-btn:hover {
+.clear-search-btn:hover {
   color: var(--text-primary);
+  background: var(--bg-secondary);
 }
 
-.explore-search .smart-search-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-  z-index: 50;
-  max-height: 380px;
-  overflow-y: auto;
-  padding: var(--space-3);
+/* Match Chip Row */
+.search-match-chip-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-2);
+  padding: 2px 4px;
 }
 
-.explore-search .suggestion-section {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.explore-search .suggestion-section-title {
-  display: flex;
+.search-match-pill {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
   font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  padding: 4px 8px;
-  letter-spacing: 0.04em;
-}
-
-.explore-search .suggestion-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 8px 12px;
-  border-radius: var(--radius-lg);
-  background: transparent;
-  border: 1px solid transparent;
-  text-align: left;
   cursor: pointer;
   transition: all var(--transition-fast);
-  width: 100%;
 }
 
-.explore-search .suggestion-item:hover {
-  background: rgba(59, 130, 246, 0.06);
-  border-color: rgba(59, 130, 246, 0.2);
-}
-
-.explore-search .sugg-icon {
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.explore-search .sugg-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.explore-search .sugg-info strong {
-  font-family: var(--font-heading);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.explore-search .sugg-sub {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.explore-search .sugg-action {
-  font-size: 11px;
-  font-weight: 700;
-  color: #3b82f6;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.explore-search .suggestion-empty {
-  padding: var(--space-3);
-  text-align: center;
-}
-
-.explore-search .suggestion-empty span {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.explore-search .did-you-mean-banner {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--radius-lg);
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.explore-search .did-you-mean-btn {
-  background: transparent;
-  border: none;
-  color: #d97706;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-}
-
-.explore-search .did-you-mean-btn:hover {
-  color: #b45309;
+.search-match-pill:hover {
+  background: #3b82f6;
+  color: #ffffff;
 }
 
 /* Workers Filter Bar */

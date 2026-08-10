@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, MapPin, Zap, Navigation, ChevronDown, Check, 
   Users, Plus, Car, Bike, ArrowRight, Sparkles, Wrench, Briefcase, 
-  SlidersHorizontal, Lightbulb, X 
+  SlidersHorizontal, X 
 } from 'lucide-react';
 import { useGigs } from '../../context/GigContext';
 import { useWorkers } from '../../context/WorkerContext';
@@ -22,68 +22,28 @@ const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [homeFeedTab, setHomeFeedTab] = useState('gigs'); // 'gigs' | 'workers' | 'rides'
   const [showAreaPicker, setShowAreaPicker] = useState(false);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [areaSearchQuery, setAreaSearchQuery] = useState('');
   const [areaSuggestions, setAreaSuggestions] = useState([]);
   const [searchingArea, setSearchingArea] = useState(false);
-
-  const searchBoxRef = useRef(null);
 
   const { getNearbyGigs } = useGigs();
   const { getNearbyWorkers } = useWorkers();
   const { getAllActiveRides } = useRides();
   const { location, radius, setRadius, requestLocation, locating } = useLocation();
 
-  // Close search suggestions on outside click
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) {
-        setShowSearchDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, []);
-
-  // 1. Smart Category & Worker Search Suggestions with Spell Correction
-  const searchSuggestions = useMemo(() => {
-    if (!search.trim() || search.trim().length < 2) {
-      return { matchedCategories: [], matchedWorkers: [], didYouMean: null };
-    }
-
+  // Check if search matches any specific category fuzzily / by synonyms
+  const matchedCategory = useMemo(() => {
+    if (!search.trim() || search.trim().length < 2) return null;
     const q = search.trim().toLowerCase();
-
-    // A. Match Categories by name, id, or synonyms/keywords
-    const matchedCategories = CATEGORIES.filter(cat => {
+    
+    return CATEGORIES.find(cat => {
       if (fuzzyMatchText(q, cat.name) || fuzzyMatchText(q, cat.id)) return true;
       const keywords = CATEGORY_KEYWORDS[cat.id] || [];
       return keywords.some(k => fuzzyMatchText(q, k));
-    });
+    }) || null;
+  }, [search]);
 
-    // B. Match Workers by Name, Shop Name, Area, or Custom Profession
-    const allWorkers = getNearbyWorkers({ radiusKm: 999 });
-    const matchedWorkers = allWorkers.filter(w => {
-      return (
-        fuzzyMatchText(q, w.name) ||
-        fuzzyMatchText(q, w.livingArea) ||
-        fuzzyMatchText(q, w.customProfession) ||
-        fuzzyMatchText(q, w.description)
-      );
-    }).slice(0, 5);
-
-    // C. Did You Mean Spell Suggestion
-    let didYouMean = null;
-    if (matchedCategories.length > 0) {
-      const topCat = matchedCategories[0];
-      if (topCat.name.toLowerCase() !== q) {
-        didYouMean = topCat;
-      }
-    }
-
-    return { matchedCategories, matchedWorkers, didYouMean };
-  }, [search, getNearbyWorkers]);
-
-  // 2. Nearby Gigs (Client Work Requirements)
+  // 1. Nearby Gigs (Client Work Requirements)
   const nearbyGigs = useMemo(() => {
     let list = getNearbyGigs(selectedCategory);
     if (search.trim()) {
@@ -99,7 +59,7 @@ const Home = () => {
 
   const activeGigs = nearbyGigs.filter(g => g.status === 'active');
 
-  // 3. Nearby Workers (Electricians, Mechanics, etc.)
+  // 2. Nearby Workers (searches by worker name, shop name, profession, description, area)
   const nearbyWorkers = useMemo(() => {
     return getNearbyWorkers({
       profession: selectedCategory || 'all',
@@ -108,7 +68,7 @@ const Home = () => {
     });
   }, [getNearbyWorkers, selectedCategory, search, radius]);
 
-  // 4. Nearby Travel Rides (Car & Bike)
+  // 3. Nearby Travel Rides (Car & Bike)
   const allActiveRides = getAllActiveRides();
 
   // Search places using OpenStreetMap Nominatim
@@ -152,23 +112,10 @@ const Home = () => {
     window.location.reload();
   };
 
-  const handleSelectCategorySuggestion = (cat) => {
+  const handleSelectSuggestedCategory = (cat) => {
     setSelectedCategory(cat.id);
     setSearch('');
-    setShowSearchDropdown(false);
-    // Switch to appropriate feed tab
     setHomeFeedTab('workers');
-  };
-
-  const handleSelectWorkerSuggestion = (worker) => {
-    setShowSearchDropdown(false);
-    navigate(`/worker/${worker.id}`);
-  };
-
-  const handleApplyDidYouMean = (cat) => {
-    setSelectedCategory(cat.id);
-    setSearch(cat.name);
-    setShowSearchDropdown(false);
   };
 
   return (
@@ -276,8 +223,8 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Location & Smart Search Bar */}
-        <section className="home-search animate-fade-in-up" ref={searchBoxRef}>
+        {/* Location & Clean Search Bar */}
+        <section className="home-search animate-fade-in-up">
           <div className="location-header-bar">
             <div className="location-header-info">
               <MapPin size={16} className="location-header-pin" />
@@ -342,113 +289,43 @@ const Home = () => {
             </div>
           )}
 
-          {/* Smart Search Input with Live Dropdown & Spell Suggestion */}
-          <div className="search-bar-container">
-            <div className="search-bar">
-              <div className="input-icon-wrapper">
-                <Search size={18} className="input-icon" />
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="Search by worker name, shop name, or skill (e.g. Electrician, Siri Chandana, Madhapur...)"
-                  value={search}
-                  onChange={e => {
-                    setSearch(e.target.value);
-                    setShowSearchDropdown(true);
-                  }}
-                  onFocus={() => setShowSearchDropdown(true)}
-                />
-                {search && (
-                  <button 
-                    type="button"
-                    className="clear-search-btn"
-                    onClick={() => {
-                      setSearch('');
-                      setShowSearchDropdown(false);
-                    }}
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
+          {/* Clean Real-time Search Input */}
+          <div className="home-search-bar-wrap">
+            <div className="input-icon-wrapper">
+              <Search size={18} className="input-icon" />
+              <input
+                type="text"
+                className="input-field search-input"
+                placeholder="Search by worker name, shop name, or skill (e.g. Electrician, Siri Chandana, Madhapur...)"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              {search && (
+                <button 
+                  type="button"
+                  className="clear-search-btn"
+                  onClick={() => setSearch('')}
+                  aria-label="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
 
-            {/* Smart Search Dropdown */}
-            {showSearchDropdown && search.trim().length >= 2 && (
-              <div className="smart-search-dropdown glass-card animate-fade-in">
-                {/* 1. Category Matches */}
-                {searchSuggestions.matchedCategories.length > 0 && (
-                  <div className="suggestion-section">
-                    <div className="suggestion-section-title">
-                      <Zap size={13} className="text-accent" /> Categories / Trades
-                    </div>
-                    {searchSuggestions.matchedCategories.slice(0, 4).map(cat => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        className="suggestion-item category-item"
-                        onClick={() => handleSelectCategorySuggestion(cat)}
-                      >
-                        <span className="sugg-icon">{cat.emoji}</span>
-                        <div className="sugg-info">
-                          <strong>{cat.name}</strong>
-                          <span className="sugg-sub">Auto-filter workers & work posts</span>
-                        </div>
-                        <span className="sugg-action">Select Category →</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* 2. Worker / Shop Matches */}
-                {searchSuggestions.matchedWorkers.length > 0 && (
-                  <div className="suggestion-section mt-2">
-                    <div className="suggestion-section-title">
-                      <Users size={13} className="text-primary" /> Verified Workers & Local Shops
-                    </div>
-                    {searchSuggestions.matchedWorkers.map(w => (
-                      <button
-                        key={w.id}
-                        type="button"
-                        className="suggestion-item worker-item"
-                        onClick={() => handleSelectWorkerSuggestion(w)}
-                      >
-                        <span className="sugg-icon">👷</span>
-                        <div className="sugg-info">
-                          <strong>{w.name}</strong>
-                          <span className="sugg-sub">{w.customProfession || w.profession} • 📍 {w.livingArea}</span>
-                        </div>
-                        <span className="sugg-action">View Profile →</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Empty Suggestions */}
-                {searchSuggestions.matchedCategories.length === 0 && searchSuggestions.matchedWorkers.length === 0 && (
-                  <div className="suggestion-empty">
-                    <span>No exact match for "{search}"</span>
-                    <p className="text-xs text-tertiary">Searching all posts and workers with fuzzy matching...</p>
-                  </div>
-                )}
+            {/* Category Auto-Match Chip */}
+            {matchedCategory && selectedCategory !== matchedCategory.id && (
+              <div className="search-match-chip-row animate-fade-in">
+                <span className="text-xs text-secondary">Matching Category:</span>
+                <button
+                  type="button"
+                  className="search-match-pill"
+                  onClick={() => handleSelectSuggestedCategory(matchedCategory)}
+                >
+                  {matchedCategory.emoji} Filter by {matchedCategory.name} →
+                </button>
               </div>
             )}
           </div>
-
-          {/* Spell Correction / Did You Mean Banner */}
-          {searchSuggestions.didYouMean && search.trim() && (
-            <div className="did-you-mean-banner animate-fade-in">
-              <Lightbulb size={14} className="text-warning" />
-              <span>Did you mean:</span>
-              <button 
-                type="button" 
-                className="did-you-mean-btn"
-                onClick={() => handleApplyDidYouMean(searchSuggestions.didYouMean)}
-              >
-                {searchSuggestions.didYouMean.emoji} {searchSuggestions.didYouMean.name}
-              </button>
-            </div>
-          )}
 
           {/* Radius Selector */}
           <div className="radius-selector">
@@ -535,7 +412,7 @@ const Home = () => {
               ) : (
                 <div className="feed-empty glass-card">
                   <div className="feed-empty-icon">📭</div>
-                  <h3>No active work posts in this area</h3>
+                  <h3>No work posts found matching "{search || 'this area'}"</h3>
                   <p>Be the first to post a requirement within {radius} km radius!</p>
                   <Link to="/post" className="btn btn-primary mt-4">
                     Post Work Requirement
@@ -557,11 +434,18 @@ const Home = () => {
               ) : (
                 <div className="feed-empty glass-card">
                   <div className="feed-empty-icon">👷</div>
-                  <h3>No registered workers found within {radius} km</h3>
-                  <p>Are you an Electrician, Mechanic, Plumber, or Driver? Register your profile today!</p>
-                  <Link to="/register-worker" className="btn btn-primary mt-4">
-                    Register as a Worker
-                  </Link>
+                  <h3>No workers found matching "{search || selectedCategory || 'this area'}" within {radius} km</h3>
+                  <p>Try clearing your search or expanding the radius.</p>
+                  <div className="empty-actions-row mt-4">
+                    {search && (
+                      <button className="btn btn-outline" onClick={() => setSearch('')}>
+                        Clear Search
+                      </button>
+                    )}
+                    <Link to="/register-worker" className="btn btn-primary">
+                      Register as a Worker
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>

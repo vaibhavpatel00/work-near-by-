@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, TrendingUp, Users, Wrench, Zap, Plus, 
-  MapPin, SlidersHorizontal, ArrowRight, ShieldCheck, Sparkles, Filter, Lightbulb, X
+  MapPin, SlidersHorizontal, ArrowRight, ShieldCheck, Sparkles, Filter, X, Lightbulb
 } from 'lucide-react';
 import { CATEGORIES } from '../../data/categories';
 import { useGigs } from '../../context/GigContext';
@@ -24,58 +24,18 @@ const Explore = () => {
   const [selectedProfession, setSelectedProfession] = useState('all');
   const [radiusFilter, setRadiusFilter] = useState(100); // 100 km radius default
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-  const searchBoxRef = useRef(null);
-
-  // Close search suggestions on outside click
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) {
-        setShowSearchDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, []);
-
-  // 1. Smart Category & Worker Search Suggestions with Spell Correction
-  const searchSuggestions = useMemo(() => {
-    if (!search.trim() || search.trim().length < 2) {
-      return { matchedCategories: [], matchedWorkers: [], didYouMean: null };
-    }
-
+  // Check if search matches any specific category fuzzily / by synonyms
+  const matchedCategory = useMemo(() => {
+    if (!search.trim() || search.trim().length < 2) return null;
     const q = search.trim().toLowerCase();
-
-    // A. Match Categories by name, id, or synonyms/keywords
-    const matchedCategories = CATEGORIES.filter(cat => {
+    
+    return CATEGORIES.find(cat => {
       if (fuzzyMatchText(q, cat.name) || fuzzyMatchText(q, cat.id)) return true;
       const keywords = CATEGORY_KEYWORDS[cat.id] || [];
       return keywords.some(k => fuzzyMatchText(q, k));
-    });
-
-    // B. Match Workers by Name, Shop Name, Area, or Custom Profession
-    const allWorkers = getNearbyWorkers({ radiusKm: 999 });
-    const matchedWorkers = allWorkers.filter(w => {
-      return (
-        fuzzyMatchText(q, w.name) ||
-        fuzzyMatchText(q, w.livingArea) ||
-        fuzzyMatchText(q, w.customProfession) ||
-        fuzzyMatchText(q, w.description)
-      );
-    }).slice(0, 5);
-
-    // C. Did You Mean Spell Suggestion
-    let didYouMean = null;
-    if (matchedCategories.length > 0) {
-      const topCat = matchedCategories[0];
-      if (topCat.name.toLowerCase() !== q) {
-        didYouMean = topCat;
-      }
-    }
-
-    return { matchedCategories, matchedWorkers, didYouMean };
-  }, [search, getNearbyWorkers]);
+    }) || null;
+  }, [search]);
 
   // Search filtered categories for category tab
   const filteredCategories = useMemo(() => {
@@ -86,7 +46,7 @@ const Explore = () => {
     );
   }, [search]);
 
-  // Nearby workers list
+  // Nearby workers list (searches by worker name, shop name, profession, description, area)
   const nearbyWorkers = useMemo(() => {
     return getNearbyWorkers({
       profession: selectedProfession,
@@ -100,22 +60,9 @@ const Explore = () => {
     ? getNearbyGigs(selectedCategory).filter(g => g.status === 'active')
     : [];
 
-  const handleSelectCategorySuggestion = (cat) => {
+  const handleSelectSuggestedCategory = (cat) => {
     setSelectedProfession(cat.id);
     setSearch('');
-    setShowSearchDropdown(false);
-    setActiveTab('workers');
-  };
-
-  const handleSelectWorkerSuggestion = (worker) => {
-    setShowSearchDropdown(false);
-    navigate(`/worker/${worker.id}`);
-  };
-
-  const handleApplyDidYouMean = (cat) => {
-    setSelectedProfession(cat.id);
-    setSearch(cat.name);
-    setShowSearchDropdown(false);
   };
 
   return (
@@ -152,112 +99,42 @@ const Explore = () => {
           </button>
         </div>
 
-        {/* Smart Search Bar Container */}
-        <div className="explore-search animate-fade-in-up" ref={searchBoxRef}>
-          <div className="search-bar-container">
-            <div className="input-icon-wrapper">
-              <Search size={18} className="input-icon" />
-              <input
-                type="text"
-                className="input-field"
-                placeholder={activeTab === 'workers' 
-                  ? "Search by worker name, shop name, or skill (e.g. Electrician, Siri Chandana, Madhapur...)"
-                  : "Search work categories..."
-                }
-                value={search}
-                onChange={e => {
-                  setSearch(e.target.value);
-                  setShowSearchDropdown(true);
-                }}
-                onFocus={() => setShowSearchDropdown(true)}
-              />
-              {search && (
-                <button 
-                  type="button"
-                  className="clear-search-btn"
-                  onClick={() => {
-                    setSearch('');
-                    setShowSearchDropdown(false);
-                  }}
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-
-            {/* Smart Search Dropdown */}
-            {showSearchDropdown && search.trim().length >= 2 && (
-              <div className="smart-search-dropdown glass-card animate-fade-in">
-                {/* 1. Category Matches */}
-                {searchSuggestions.matchedCategories.length > 0 && (
-                  <div className="suggestion-section">
-                    <div className="suggestion-section-title">
-                      <Zap size={13} className="text-accent" /> Categories / Trades
-                    </div>
-                    {searchSuggestions.matchedCategories.slice(0, 4).map(cat => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        className="suggestion-item category-item"
-                        onClick={() => handleSelectCategorySuggestion(cat)}
-                      >
-                        <span className="sugg-icon">{cat.emoji}</span>
-                        <div className="sugg-info">
-                          <strong>{cat.name}</strong>
-                          <span className="sugg-sub">Auto-filter workers</span>
-                        </div>
-                        <span className="sugg-action">Select Category →</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* 2. Worker / Shop Matches */}
-                {searchSuggestions.matchedWorkers.length > 0 && (
-                  <div className="suggestion-section mt-2">
-                    <div className="suggestion-section-title">
-                      <Users size={13} className="text-primary" /> Verified Workers & Local Shops
-                    </div>
-                    {searchSuggestions.matchedWorkers.map(w => (
-                      <button
-                        key={w.id}
-                        type="button"
-                        className="suggestion-item worker-item"
-                        onClick={() => handleSelectWorkerSuggestion(w)}
-                      >
-                        <span className="sugg-icon">👷</span>
-                        <div className="sugg-info">
-                          <strong>{w.name}</strong>
-                          <span className="sugg-sub">{w.customProfession || w.profession} • 📍 {w.livingArea}</span>
-                        </div>
-                        <span className="sugg-action">View Profile →</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Empty Suggestions */}
-                {searchSuggestions.matchedCategories.length === 0 && searchSuggestions.matchedWorkers.length === 0 && (
-                  <div className="suggestion-empty">
-                    <span>No exact match for "{search}"</span>
-                    <p className="text-xs text-tertiary">Searching all workers with fuzzy matching...</p>
-                  </div>
-                )}
-              </div>
+        {/* Clean, Fast Search Bar */}
+        <div className="explore-search animate-fade-in-up">
+          <div className="input-icon-wrapper">
+            <Search size={18} className="input-icon" />
+            <input
+              type="text"
+              className="input-field search-input"
+              placeholder={activeTab === 'workers' 
+                ? "Search by worker name, shop name, or skill (e.g. Electrician, Siri Chandana, Madhapur...)"
+                : "Search work categories..."
+              }
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button 
+                type="button"
+                className="clear-search-btn"
+                onClick={() => setSearch('')}
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
             )}
           </div>
 
-          {/* Spell Correction / Did You Mean Banner */}
-          {searchSuggestions.didYouMean && search.trim() && (
-            <div className="did-you-mean-banner animate-fade-in mt-2">
-              <Lightbulb size={14} className="text-warning" />
-              <span>Did you mean:</span>
-              <button 
-                type="button" 
-                className="did-you-mean-btn"
-                onClick={() => handleApplyDidYouMean(searchSuggestions.didYouMean)}
+          {/* Quick Category Auto-Match Chip (Shows cleanly under search if category is detected) */}
+          {matchedCategory && selectedProfession !== matchedCategory.id && (
+            <div className="search-match-chip-row animate-fade-in">
+              <span className="text-xs text-secondary">Matching Category:</span>
+              <button
+                type="button"
+                className="search-match-pill"
+                onClick={() => handleSelectSuggestedCategory(matchedCategory)}
               >
-                {searchSuggestions.didYouMean.emoji} {searchSuggestions.didYouMean.name}
+                {matchedCategory.emoji} Filter by {matchedCategory.name} →
               </button>
             </div>
           )}
@@ -275,11 +152,11 @@ const Explore = () => {
                 >
                   All Skills ({nearbyWorkers.length})
                 </button>
-                {CATEGORIES.slice(0, 10).map(cat => (
+                {CATEGORIES.map(cat => (
                   <button
                     key={cat.id}
                     className={`prof-pill ${selectedProfession === cat.id ? 'active' : ''}`}
-                    onClick={() => setSelectedProfession(cat.id)}
+                    onClick={() => setSelectedProfession(selectedProfession === cat.id ? 'all' : cat.id)}
                   >
                     {cat.emoji} {cat.name}
                   </button>
@@ -342,9 +219,14 @@ const Explore = () => {
               ) : (
                 <div className="feed-empty glass-card">
                   <div className="feed-empty-icon">👷</div>
-                  <h3>No workers registered in this category within {radiusFilter} km</h3>
-                  <p>Be the first professional to list your services in this area!</p>
+                  <h3>No workers found matching "{search || selectedProfession}" within {radiusFilter} km</h3>
+                  <p>Try searching for a different skill, area, or expand your search radius.</p>
                   <div className="empty-actions-row mt-4">
+                    {search && (
+                      <button className="btn btn-outline" onClick={() => setSearch('')}>
+                        Clear Search
+                      </button>
+                    )}
                     {radiusFilter < 999 && (
                       <button className="btn btn-outline" onClick={() => setRadiusFilter(999)}>
                         Expand Radius to All
