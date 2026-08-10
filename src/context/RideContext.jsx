@@ -11,6 +11,7 @@ const GIG_CATEGORY_TRAVEL = 'travel_ride';
 
 // Helper to encode metadata into description string for 100% Supabase schema compatibility
 const encodeDescriptionWithMeta = (description, meta = {}) => {
+  const cleanDesc = (description || '').split('\n\n__META__')[0];
   const metaObj = {
     driverId: meta.driverId || '',
     driverName: meta.driverName || 'Driver',
@@ -25,7 +26,7 @@ const encodeDescriptionWithMeta = (description, meta = {}) => {
     passengers: meta.passengers || [],
     preferences: meta.preferences || {},
   };
-  return `${description || ''}\n\n__META__${JSON.stringify(metaObj)}`;
+  return `${cleanDesc}\n\n__META__${JSON.stringify(metaObj)}`;
 };
 
 // Helper to decode description and metadata
@@ -34,7 +35,7 @@ const decodeDescriptionWithMeta = (rawDescription) => {
   const parts = rawDescription.split('\n\n__META__');
   if (parts.length > 1) {
     try {
-      const meta = JSON.parse(parts[1]);
+      const meta = JSON.parse(parts[parts.length - 1]);
       return { description: parts[0], meta };
     } catch {
       return { description: rawDescription, meta: {} };

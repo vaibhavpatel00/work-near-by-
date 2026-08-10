@@ -11,6 +11,7 @@ const GIGS_STORAGE_KEY = 'wikwik_gigs_v4';
 
 // Helper to encode metadata into description string for 100% Supabase schema compatibility
 const encodeDescriptionWithMeta = (description, meta = {}) => {
+  const cleanDesc = (description || '').split('\n\n__META__')[0];
   const metaObj = {
     contactDetails: meta.contactDetails || null,
     attachments: meta.attachments || [],
@@ -18,7 +19,7 @@ const encodeDescriptionWithMeta = (description, meta = {}) => {
     maxApplications: meta.maxApplications || 5,
     requests: meta.requests || [],
   };
-  return `${description}\n\n__META__${JSON.stringify(metaObj)}`;
+  return `${cleanDesc}\n\n__META__${JSON.stringify(metaObj)}`;
 };
 
 // Helper to decode description and metadata
@@ -27,7 +28,7 @@ const decodeDescriptionWithMeta = (rawDescription) => {
   const parts = rawDescription.split('\n\n__META__');
   if (parts.length > 1) {
     try {
-      const meta = JSON.parse(parts[1]);
+      const meta = JSON.parse(parts[parts.length - 1]);
       return { description: parts[0], meta };
     } catch {
       return { description: rawDescription, meta: {} };

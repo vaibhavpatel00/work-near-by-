@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Check, MapPin, Calendar, Clock, IndianRupee, 
   FileText, Tag, Edit3, Image as ImageIcon, Paperclip, X, Phone, Mail, 
-  MessageSquare, Hourglass, Users 
+  MessageSquare, Hourglass, Users, DollarSign 
 } from 'lucide-react';
 import { CATEGORIES } from '../../data/categories';
 import { useGigs } from '../../context/GigContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../context/LocationContext';
 import { COUNTRIES, getCountryByCode } from '../../data/countries';
+import { formatAmount, formatDate } from '../../utils/helpers';
 import './PostGig.css';
 
 const STEPS = ['Category', 'Details & Files', 'Schedule & Expiry', 'Amount', 'Contact Info', 'Review'];
@@ -20,7 +21,7 @@ const PostGig = () => {
   const { user, isAuthenticated } = useAuth();
   const { location } = useLocation();
 
-  const userCountry = getCountryByCode(user?.country);
+  const userCountry = getCountryByCode(user?.country) || COUNTRIES[0];
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
@@ -35,12 +36,12 @@ const PostGig = () => {
     expiryDate: '',
     maxApplications: 5,
     amount: '',
-    currencySymbol: userCountry.currencySymbol || '$',
+    currencySymbol: userCountry?.currencySymbol || '$',
     contactPhone: user?.phone || '',
     contactEmail: user?.email || '',
     whatsappPref: true,
     callPref: true,
-    location: { ...location },
+    location: location ? { ...location } : { address: 'Nearby', lat: 17.385, lng: 78.4867 },
   });
 
   const updateForm = (field, value) => {
@@ -86,7 +87,7 @@ const PostGig = () => {
       case 1: return form.title.length >= 5 && form.description.length >= 10;
       case 2: return !!form.date && !!form.duration && !!form.expiryDate;
       case 3: return Number(form.amount) > 0;
-      case 4: return form.contactPhone.length >= 10 && form.contactEmail.includes('@');
+      case 4: return form.contactPhone.length >= 8 && form.contactEmail.includes('@');
       case 5: return true;
       default: return false;
     }
@@ -116,7 +117,7 @@ const PostGig = () => {
       currencySymbol: form.currencySymbol,
       date: dateTime,
       duration: form.duration,
-      location: form.location,
+      location: form.location || location,
       attachments: form.attachments,
       expiryDate: form.expiryDate,
       maxApplications: Number(form.maxApplications),
@@ -134,7 +135,7 @@ const PostGig = () => {
   const selectedCategoryObj = CATEGORIES.find(c => c.id === form.category);
   const categoryDisplayName = form.category === 'other'
     ? (form.customCategory.trim() || 'Other Work')
-    : (selectedCategoryObj?.name || form.category);
+    : (selectedCategoryObj?.name || form.category || 'General Work');
 
   return (
     <div className="page-content">
@@ -161,34 +162,36 @@ const PostGig = () => {
             <div className="step-category">
               <h2>What type of work?</h2>
               <p className="text-secondary text-sm">Select a category or choose Other for custom requirements</p>
-
+              
               <div className="category-select-grid">
                 {CATEGORIES.map(cat => {
                   const Icon = cat.icon;
+                  const isSelected = form.category === cat.id;
                   return (
                     <button
                       key={cat.id}
-                      className={`category-select-item ${cat.cssClass} ${form.category === cat.id ? 'selected' : ''}`}
+                      className={`cat-select-card ${isSelected ? 'selected' : ''}`}
                       onClick={() => updateForm('category', cat.id)}
                     >
-                      <Icon size={24} />
-                      <span>{cat.name}</span>
+                      <span className="cat-select-icon"><Icon size={24} /></span>
+                      <span className="cat-select-name">{cat.name}</span>
                     </button>
                   );
                 })}
               </div>
 
               {form.category === 'other' && (
-                <div className="input-group mt-6 animate-fade-in-up">
-                  <label className="input-label">Specify Custom Work Category</label>
+                <div className="custom-category-box animate-fade-in mt-4">
+                  <label className="input-label">Custom Work Category</label>
                   <div className="input-icon-wrapper">
                     <Edit3 size={18} className="input-icon" />
                     <input
                       type="text"
                       className="input-field"
-                      placeholder="e.g. Car Washing, Painting, Tailoring..."
+                      placeholder="e.g. Graphic Designer, Welder, Yoga Trainer..."
                       value={form.customCategory}
                       onChange={e => updateForm('customCategory', e.target.value)}
+                      maxLength={50}
                       autoFocus
                     />
                   </div>
@@ -205,21 +208,18 @@ const PostGig = () => {
 
               <div className="input-group mt-4">
                 <label className="input-label">Work Title</label>
-                <div className="input-icon-wrapper">
-                  <FileText size={18} className="input-icon" />
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="e.g. Driver needed for airport drop today"
-                    value={form.title}
-                    onChange={e => updateForm('title', e.target.value)}
-                    maxLength={100}
-                  />
-                </div>
-                <span className="input-hint">{form.title.length}/100</span>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="e.g. Driver needed for airport drop today"
+                  value={form.title}
+                  onChange={e => updateForm('title', e.target.value)}
+                  maxLength={100}
+                />
+                <span className="char-count">{form.title.length}/100</span>
               </div>
 
-              <div className="input-group mt-4">
+              <div className="input-group">
                 <label className="input-label">Detailed Description</label>
                 <textarea
                   className="input-field"
@@ -229,44 +229,53 @@ const PostGig = () => {
                   rows={4}
                   maxLength={600}
                 />
-                <span className="input-hint">{form.description.length}/600</span>
+                <span className="char-count">{form.description.length}/600</span>
               </div>
 
               {/* Attachments Section */}
-              <div className="attachments-upload-section mt-6">
+              <div className="attachments-section mt-4">
                 <label className="input-label">Publish Images & Documents (Optional)</label>
-                <div className="upload-buttons-row">
-                  <label className="btn btn-outline btn-sm upload-btn">
+                
+                <div className="attachment-buttons-row">
+                  <label className="btn btn-outline btn-sm attach-btn">
                     <ImageIcon size={16} /> Add Image
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={e => handleFileUpload(e, 'image')}
-                      hidden
                       multiple
+                      onChange={e => handleFileUpload(e, 'image')}
+                      style={{ display: 'none' }}
                     />
                   </label>
 
-                  <label className="btn btn-outline btn-sm upload-btn">
+                  <label className="btn btn-outline btn-sm attach-btn">
                     <Paperclip size={16} /> Add Document
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx,.txt"
-                      onChange={e => handleFileUpload(e, 'document')}
-                      hidden
                       multiple
+                      onChange={e => handleFileUpload(e, 'document')}
+                      style={{ display: 'none' }}
                     />
                   </label>
                 </div>
 
-                {/* Attachments List */}
+                {/* Previews List */}
                 {form.attachments.length > 0 && (
-                  <div className="attached-files-list mt-3">
+                  <div className="attachments-preview-grid mt-3">
                     {form.attachments.map(att => (
-                      <div key={att.id} className="attached-file-chip">
-                        {att.type === 'image' ? <ImageIcon size={14} className="text-accent" /> : <Paperclip size={14} className="text-primary" />}
-                        <span className="file-name">{att.name}</span>
-                        <button type="button" className="remove-att-btn" onClick={() => removeAttachment(att.id)}>
+                      <div key={att.id} className="attachment-chip">
+                        {att.type === 'image' ? (
+                          <img src={att.url} alt={att.name} className="attachment-thumb" />
+                        ) : (
+                          <FileText size={16} className="text-secondary" />
+                        )}
+                        <span className="attachment-filename">{att.name}</span>
+                        <button
+                          type="button"
+                          className="attachment-remove-btn"
+                          onClick={() => removeAttachment(att.id)}
+                        >
                           <X size={14} />
                         </button>
                       </div>
@@ -312,22 +321,20 @@ const PostGig = () => {
                 </div>
               </div>
 
-              <div className="input-group mt-4">
+              <div className="input-group mt-3">
                 <label className="input-label">Duration</label>
-                <div className="input-icon-wrapper">
-                  <Clock size={18} className="input-icon" />
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="e.g. 3 hours, Full day, 2 days"
-                    value={form.duration}
-                    onChange={e => updateForm('duration', e.target.value)}
-                  />
-                </div>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="e.g. 3 hours, Full day, 2 days"
+                  value={form.duration}
+                  onChange={e => updateForm('duration', e.target.value)}
+                />
               </div>
 
-              <div className="expiry-config-card glass-card mt-6">
-                <h3><Hourglass size={16} className="text-warning" /> Post Expiry & Application Limits</h3>
+              {/* Expiry & Limit Rules */}
+              <div className="post-rules-card glass-card mt-4">
+                <h3><Hourglass size={16} className="text-accent" /> Post Expiry & Application Limits</h3>
                 
                 <div className="grid-2-col mt-3">
                   <div className="input-group">
@@ -343,13 +350,15 @@ const PostGig = () => {
                   </div>
 
                   <div className="input-group">
-                    <label className="input-label"><Users size={14} className="inline-icon" /> Max Applications Limit</label>
+                    <label className="input-label">
+                      <Users size={14} className="inline-icon" /> Max Applications Limit
+                    </label>
                     <select
                       className="input-field"
                       value={form.maxApplications}
                       onChange={e => updateForm('maxApplications', e.target.value)}
                     >
-                      <option value={1}>1 Application (Close instantly on 1 request)</option>
+                      <option value={1}>1 Application (Exclusive)</option>
                       <option value={3}>3 Applications</option>
                       <option value={5}>5 Applications (Recommended)</option>
                       <option value={10}>10 Applications</option>
@@ -368,44 +377,35 @@ const PostGig = () => {
               <h2>Set your offered pay</h2>
               <p className="text-secondary text-sm">How much will you pay for this work?</p>
 
-              <div className="amount-input-wrapper mt-6">
-                <select
-                  className="amount-currency-select"
-                  value={form.currencySymbol}
-                  onChange={e => updateForm('currencySymbol', e.target.value)}
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    fontSize: '1.5rem',
-                    fontWeight: 700,
-                    color: 'var(--primary-color)',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    marginRight: '0.5rem'
-                  }}
-                >
-                  {COUNTRIES.map(c => (
-                    <option key={c.code} value={c.currencySymbol}>
-                      {c.flag} {c.currencySymbol} ({c.currency})
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  className="amount-input"
-                  placeholder="0"
-                  value={form.amount}
-                  onChange={e => updateForm('amount', e.target.value)}
-                  min={0}
-                />
+              <div className="amount-input-group mt-6">
+                <div className="amount-input-wrapper">
+                  <select
+                    className="amount-currency-select"
+                    value={form.currencySymbol}
+                    onChange={e => updateForm('currencySymbol', e.target.value)}
+                  >
+                    {COUNTRIES.map(c => (
+                      <option key={c.code} value={c.currencySymbol}>
+                        {c.flag} {c.currencySymbol} ({c.currency})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    className="amount-input"
+                    placeholder="0"
+                    value={form.amount}
+                    onChange={e => updateForm('amount', e.target.value)}
+                    min={0}
+                    autoFocus
+                  />
+                </div>
+                <span className="amount-hint">Payment will be made directly to the worker offline</span>
               </div>
-              <p className="text-center text-xs text-tertiary mt-2">
-                Payment will be made directly to the worker offline
-              </p>
             </div>
           )}
 
-          {/* Step 4: Contact Details (New Section after Amount) */}
+          {/* Step 4: Contact Info */}
           {step === 4 && (
             <div className="step-contact">
               <h2>Publisher Contact Details</h2>
@@ -418,14 +418,14 @@ const PostGig = () => {
                   <input
                     type="tel"
                     className="input-field"
-                    placeholder="e.g. +91 98765 43210"
+                    placeholder="+91 98765 43210"
                     value={form.contactPhone}
                     onChange={e => updateForm('contactPhone', e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="input-group mt-4">
+              <div className="input-group">
                 <label className="input-label">Email Address</label>
                 <div className="input-icon-wrapper">
                   <Mail size={18} className="input-icon" />
@@ -439,9 +439,9 @@ const PostGig = () => {
                 </div>
               </div>
 
-              <div className="contact-preferences-card glass-card mt-6">
-                <span className="input-label mb-2 block">Preferred Contact Methods</span>
-                <div className="checkbox-row">
+              <div className="contact-methods-box glass-card mt-4">
+                <label className="input-label">Preferred Contact Methods</label>
+                <div className="contact-checkboxes">
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
@@ -492,7 +492,7 @@ const PostGig = () => {
                   <div>
                     <span className="review-label">Description & Files</span>
                     <span className="review-value review-desc">{form.description}</span>
-                    {form.attachments.length > 0 && (
+                    {form.attachments && form.attachments.length > 0 && (
                       <span className="text-xs text-accent mt-1 block">
                         📎 {form.attachments.length} file(s) attached
                       </span>
@@ -504,15 +504,19 @@ const PostGig = () => {
                   <Calendar size={16} className="text-tertiary" />
                   <div>
                     <span className="review-label">Timing & Expiry</span>
-                    <span className="review-value">{form.date} • Expires: {form.expiryDate?.replace('T', ' ')} • Max {form.maxApplications} apps</span>
+                    <span className="review-value">
+                      {form.date} • Expires: {form.expiryDate ? form.expiryDate.replace('T', ' ') : 'N/A'} • Max {form.maxApplications} apps
+                    </span>
                   </div>
                 </div>
 
                 <div className="review-row">
-                  <IndianRupee size={16} className="text-tertiary" />
+                  <DollarSign size={16} className="text-tertiary" />
                   <div>
                     <span className="review-label">Amount</span>
-                    <span className="review-value review-amount">{formatAmount(Number(form.amount))}</span>
+                    <span className="review-value review-amount">
+                      {formatAmount(Number(form.amount), form.currencySymbol)}
+                    </span>
                   </div>
                 </div>
 
@@ -528,7 +532,7 @@ const PostGig = () => {
                   <MapPin size={16} className="text-tertiary" />
                   <div>
                     <span className="review-label">Location</span>
-                    <span className="review-value">{form.location.address || 'Current location'}</span>
+                    <span className="review-value">{form.location?.address || location?.address || 'Current location'}</span>
                   </div>
                 </div>
               </div>
