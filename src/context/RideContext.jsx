@@ -157,10 +157,10 @@ export const RideProvider = ({ children }) => {
     }
   }, []);
 
-  // Fetch on mount & poll every 4 seconds + Realtime channel on gigs & rides
+  // Fetch on mount & poll every 3 seconds + Realtime channel on gigs & rides
   useEffect(() => {
     syncWithSupabase();
-    const interval = setInterval(syncWithSupabase, 4000);
+    const interval = setInterval(syncWithSupabase, 3000);
 
     let gigsChannel = null;
     let ridesChannel = null;
@@ -345,7 +345,24 @@ export const RideProvider = ({ children }) => {
 
     const encodedDescription = encodeDescriptionWithMeta(ride.description || '', fullMeta);
 
-    // 1. Primary: Save to public.gigs table
+    // 1. First try direct UPDATE on public.gigs table
+    try {
+      const { error: updateErr } = await supabase
+        .from('gigs')
+        .update({
+          description: encodedDescription,
+          status: ride.status || 'active',
+        })
+        .eq('id', ride.id);
+
+      if (updateErr) {
+        console.warn('Gigs update notice:', updateErr);
+      }
+    } catch (e) {
+      console.warn('Gigs update error:', e);
+    }
+
+    // 2. Also upsert to ensure complete row exists in public.gigs
     const gigPayload = {
       id: ride.id,
       title: `${ride.vehicleType === 'bike' ? '🏍️ Bike' : '🚗 Car'}: ${ride.origin?.address || 'Origin'} → ${ride.destination?.address || 'Destination'}`,
@@ -362,12 +379,15 @@ export const RideProvider = ({ children }) => {
     };
 
     try {
-      await supabase.from('gigs').upsert([gigPayload]);
+      const { error: upsertErr } = await supabase.from('gigs').upsert([gigPayload]);
+      if (upsertErr) {
+        console.warn('Gigs upsert error:', upsertErr);
+      }
     } catch (err) {
       console.warn('Gigs table travel upsert error:', err);
     }
 
-    // 2. Secondary: Save to public.rides table if available
+    // 3. Secondary: Save to public.rides table if available
     try {
       const ridePayload = {
         id: ride.id,
@@ -441,7 +461,7 @@ export const RideProvider = ({ children }) => {
     });
 
     // Trigger immediate background sync
-    setTimeout(syncWithSupabase, 500);
+    setTimeout(syncWithSupabase, 400);
 
     return newRide;
   }, [user, showToast, syncWithSupabase]);
@@ -508,8 +528,11 @@ export const RideProvider = ({ children }) => {
       preferences: currentRide.preferences,
     });
 
+    // Trigger immediate background sync
+    setTimeout(syncWithSupabase, 400);
+
     return true;
-  }, [user, rides, showToast]);
+  }, [user, rides, showToast, syncWithSupabase]);
 
   // Respond to passenger request (approve/reject)
   const respondToPassenger = useCallback(async (rideId, requestId, status) => {
@@ -545,7 +568,10 @@ export const RideProvider = ({ children }) => {
       passengers: updatedPassengers,
       preferences: currentRide.preferences,
     });
-  }, [rides, showToast]);
+
+    // Trigger immediate background sync
+    setTimeout(syncWithSupabase, 400);
+  }, [rides, showToast, syncWithSupabase]);
 
   // Send chat message on a passenger request thread
   const sendRideChatMessage = useCallback(async (rideId, requestId, text) => {
@@ -623,15 +649,21 @@ export const RideProvider = ({ children }) => {
   // Get user's offered rides
   const getMyOfferedRides = useCallback(() => {
     if (!user) return [];
-    return rides.filter(r => String(r.driverId) === String(user.id))
-      .sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+    return rides.filter(r => 
+      String(r.driverId) === String(user.id) ||
+      (user.phone && r.driverPhone && user.phone.replace(/\D/g, '') === r.driverPhone.replace(/\D/g, '')) ||
+      (user.name && r.driverName && user.name.toLowerCase() === r.driverName.toLowerCase())
+    ).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
   }, [rides, user]);
 
   // Get user's booked rides (as passenger)
   const getMyBookedRides = useCallback(() => {
     if (!user) return [];
     return rides.filter(r =>
-      (r.passengers || []).some(p => String(p.passengerId) === String(user.id))
+      (r.passengers || []).some(p => 
+        String(p.passengerId) === String(user.id) ||
+        (user.phone && p.passengerPhone && user.phone.replace(/\D/g, '') === p.passengerPhone.replace(/\D/g, ''))
+      )
     ).sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
   }, [rides, user]);
 

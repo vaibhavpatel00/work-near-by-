@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Clock, Calendar, Car, Bike, Users, Phone, 
   CheckCircle, AlertTriangle, Mail, MessageSquare, Send, 
   ShieldCheck, Check, X, Trash2, Wind, Package, Music, Cigarette,
-  ArrowRight
+  ArrowRight, Loader2
 } from 'lucide-react';
 import { useRides } from '../../context/RideContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +23,7 @@ const RideDetail = () => {
 
   const [requestNote, setRequestNote] = useState('');
   const [showBookModal, setShowBookModal] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeChatRequest, setActiveChatRequest] = useState(null);
 
@@ -43,31 +44,42 @@ const RideDetail = () => {
   const isBike = ride.vehicleType === 'bike';
   const VehicleIcon = isBike ? Bike : Car;
 
-  // Check if current user is the passenger who requested
+  // Check if current user is one of the passengers who requested
   const myRequest = user ? (ride.passengers || []).find(
-    p => String(p.passengerId) === String(user.id)
+    p => String(p.passengerId) === String(user.id) ||
+         (user.phone && p.passengerPhone && user.phone.replace(/\D/g, '') === p.passengerPhone.replace(/\D/g, ''))
   ) : null;
 
-  // Check if current user is the driver (only if they did not book as a passenger)
+  // Check if current user is the driver
   const isDriver = Boolean(
-    user?.id && 
-    ride.driverId && 
-    String(user.id) === String(ride.driverId) && 
-    !myRequest
+    user && (
+      (user.id && ride.driverId && String(user.id) === String(ride.driverId)) ||
+      (user.phone && ride.driverPhone && user.phone.replace(/\D/g, '') === ride.driverPhone.replace(/\D/g, '')) ||
+      (user.name && ride.driverName && user.name.trim().toLowerCase() === ride.driverName.trim().toLowerCase())
+    ) && !myRequest
   );
 
   const approvedCount = (ride.passengers || []).filter(p => p.status === 'approved').length;
   const isFull = approvedCount >= ride.seatsAvailable;
 
-  const handleBookSeat = (e) => {
+  const handleBookSeat = async (e) => {
     e.preventDefault();
     if (!user) {
       navigate('/login');
       return;
     }
-    bookSeat(ride.id, requestNote);
-    setShowBookModal(false);
-    setRequestNote('');
+    if (isBooking) return;
+    setIsBooking(true);
+
+    try {
+      await bookSeat(ride.id, requestNote);
+      setShowBookModal(false);
+      setRequestNote('');
+    } catch (err) {
+      console.error('Booking error:', err);
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   const handleSendMessage = (text) => {
@@ -261,9 +273,11 @@ const RideDetail = () => {
               </span>
             </div>
 
-            <p className="text-xs text-secondary mt-2">
-              Note sent: "{myRequest.message}"
-            </p>
+            {myRequest.message && (
+              <p className="text-xs text-secondary mt-2">
+                Note sent: "{myRequest.message}"
+              </p>
+            )}
 
             <div className="my-req-chat-bar mt-4">
               <button
@@ -296,8 +310,13 @@ const RideDetail = () => {
                         <div className="avatar avatar-md">{getInitials(req.passengerName)}</div>
                         <div>
                           <h4 className="req-worker-name">{req.passengerName}</h4>
+                          {req.passengerPhone && (
+                            <span className="text-xs text-secondary d-block" style={{ display: 'block' }}>
+                              {req.passengerPhone}
+                            </span>
+                          )}
                           <span className={`status-pill ${req.status}`}>
-                            {req.status === 'pending' && '⏳ Pending'}
+                            {req.status === 'pending' && '⏳ Pending Approval'}
                             {req.status === 'approved' && '✅ Approved'}
                             {req.status === 'rejected' && '❌ Rejected'}
                           </span>
@@ -313,7 +332,7 @@ const RideDetail = () => {
                       </button>
                     </div>
 
-                    <p className="req-message">"{req.message}"</p>
+                    {req.message && <p className="req-message">"{req.message}"</p>}
 
                     {req.status === 'pending' && ride.status === 'active' && (
                       <div className="req-actions mt-3">
@@ -321,7 +340,7 @@ const RideDetail = () => {
                           className="btn btn-primary btn-sm"
                           onClick={() => respondToPassenger(ride.id, req.id, 'approved')}
                         >
-                          <Check size={14} /> Approve
+                          <Check size={14} /> Approve Seat
                         </button>
                         <button
                           className="btn btn-ghost btn-sm text-error"
@@ -360,8 +379,16 @@ const RideDetail = () => {
                   <button type="button" className="btn btn-ghost" onClick={() => setShowBookModal(false)}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary">
-                    <Send size={16} /> Send Booking Request
+                  <button type="submit" className="btn btn-primary" disabled={isBooking}>
+                    {isBooking ? (
+                      <>
+                        <Loader2 size={16} className="spin" /> Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} /> Send Booking Request
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
