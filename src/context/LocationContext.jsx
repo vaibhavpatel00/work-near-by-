@@ -43,7 +43,10 @@ export const LocationProvider = ({ children }) => {
     }
     return { lat: DEFAULT_LAT, lng: DEFAULT_LNG, address: 'Global Location' };
   });
-  const [radius, setRadius] = useState(10); // km
+  const [radius, setRadius] = useState(() => {
+    const stored = localStorage.getItem('wikwik_radius');
+    return stored ? Number(stored) : 100;
+  }); // default 100 km
   const [locationError, setLocationError] = useState(null);
   const [locating, setLocating] = useState(false);
 

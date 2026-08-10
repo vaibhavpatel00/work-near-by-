@@ -170,11 +170,19 @@ const PostGig = () => {
                   return (
                     <button
                       key={cat.id}
+                      type="button"
                       className={`cat-select-card ${isSelected ? 'selected' : ''}`}
                       onClick={() => updateForm('category', cat.id)}
                     >
                       <span className="cat-select-icon"><Icon size={24} /></span>
-                      <span className="cat-select-name">{cat.name}</span>
+                      <div className="cat-select-info">
+                        <span className="cat-select-name">{cat.name}</span>
+                      </div>
+                      {isSelected && (
+                        <span className="cat-check-badge">
+                          <Check size={14} />
+                        </span>
+                      )}
                     </button>
                   );
                 })}

@@ -37,7 +37,7 @@ const Travel = () => {
 
   // Date & Radius
   const [dateFilter, setDateFilter] = useState('');
-  const [matchRadius, setMatchRadius] = useState(60); // 50-60 km radius
+  const [matchRadius, setMatchRadius] = useState(100); // default 100 km radius
 
   // Map Picker Modal State
   const [mapPickerTarget, setMapPickerTarget] = useState(null); // 'origin' | 'dest' | null
